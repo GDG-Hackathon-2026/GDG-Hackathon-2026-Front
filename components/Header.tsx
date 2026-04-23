@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Header() {
   return (
@@ -10,13 +11,14 @@ export default function Header() {
         >
           HACKATHON
         </Link>
-        <div className="nav-links">
+        <div className="nav-links" style={{ alignItems: "center" }}>
           <Link href="/" className="nav-link">
             Home
           </Link>
           <Link href="/project" className="nav-link">
             Project
           </Link>
+          <ThemeToggle />
         </div>
       </nav>
     </header>
