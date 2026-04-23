@@ -1,5 +1,7 @@
 import Header from "@/components/Header";
 import "./globals.css";
+import { Providers } from "./providers";
+import { Toaster } from "sonner";
 
 export default function RootLayout({
   children,
@@ -7,10 +9,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <body>
-        <Header />
-        <main className="main-content">{children}</main>
+        <Providers>
+          <Header />
+          <main className="main-content">{children}</main>
+          <Toaster position="bottom-right" richColors />
+        </Providers>
       </body>
     </html>
   );
