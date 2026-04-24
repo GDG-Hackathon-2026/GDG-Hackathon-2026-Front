@@ -1,4 +1,5 @@
 :root {
+  /* Base Colors */
   --color-bg-primary: #ffffff;
   --color-bg-secondary: #f4f4f5;
   --color-text-primary: #18181b;
@@ -7,18 +8,25 @@
   --color-primary-text: #ffffff;
   --color-border: #e4e4e7;
 
+  /* Polar Theme Colors */
+  --color-polar-bg: #f0f9ff;
+  --color-polar-border: #bae6fd;
+  --color-polar-border-light: #e0f2fe;
+  --color-polar-text-dark: #0369a1;
+  --color-polar-text-muted: #075985;
+  --color-polar-accent-start: #0ea5e9;
+  --color-polar-accent-end: #0369a1;
+  --color-polar-link: #38bdf8;
+  --color-polar-link-hover: #0284c7;
+
+  /* Glass & Shadows */
+  --color-bg-glass: rgba(255, 255, 255, 0.7);
+  --color-shadow-glass: rgba(2, 132, 199, 0.05);
+  --color-shadow-sm: rgba(0, 0, 0, 0.05);
+
+  /* Layout */
   --layout-max-width: 1200px;
   --header-height: 64px;
-}
-
-[data-theme="dark"] {
-  --color-bg-primary: #0a0a0a;
-  --color-bg-secondary: #27272a;
-  --color-text-primary: #f4f4f5;
-  --color-text-secondary: #a1a1aa;
-  --color-primary: #ffffff;
-  --color-primary-text: #000000;
-  --color-border: #3f3f46;
 }
 
 * {
