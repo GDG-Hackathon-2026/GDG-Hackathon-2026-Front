@@ -1,71 +1,77 @@
 "use client";
 
-import { useState, useRef, useEffect, Dispatch, SetStateAction } from "react";
-import { Message } from "../page";
-import styles from "./ChatInput.module.css";
+import { useState, useRef } from "react";
+import { api } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
+import styles from "./ChatInput.module.css";
 
 interface ChatInputProps {
-  setMessages: Dispatch<SetStateAction<Message[]>>;
+  selectedId: number | null;
+  onConversationCreated: (id: number) => void;
+  setMessages: any;
   isLoading: boolean;
-  setIsLoading: Dispatch<SetStateAction<boolean>>;
+  setIsLoading: (loading: boolean) => void;
 }
 
-const MAX_LENGTH = 500; // 최대 글자 수 설정
-
 export default function ChatInput({
+  selectedId,
+  onConversationCreated,
   setMessages,
   isLoading,
   setIsLoading,
 }: ChatInputProps) {
-  const { ready, user } = useAuth();
   const [input, setInput] = useState("");
+  const { ready, user } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 텍스트 길이에 맞춰 입력창 높이 자동 조절
-  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 150)}px`;
-    }
-  };
-
-  // 전송 후 입력창 높이 초기화
-  useEffect(() => {
-    if (input === "" && textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
-  }, [input]);
-
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !ready || !user) return;
 
     const currentInput = input;
     setInput("");
+    setIsLoading(true);
 
-    setMessages((prev) => [
+    // 유저 메시지 선 반영
+    setMessages((prev: any) => [
       ...prev,
       { id: Date.now(), sender: "user", text: currentInput },
     ]);
 
-    setIsLoading(true);
+    try {
+      let activeId = selectedId;
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+      // 1. 선택된 방이 없으면 새 방 생성
+      if (!activeId) {
+        // 첫 메시지의 앞부분을 제목으로 사용
+        const newConv = await api.createConversation(
+          currentInput.substring(0, 15),
+        );
+        activeId = newConv.id;
+        onConversationCreated(activeId);
+      }
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now() + 1,
-        sender: "gemini",
-        text: `"${currentInput}"에 대한 답변입니다.`,
-      },
-    ]);
+      // 2. 메시지 전송 및 Gemini 호출
+      const result = await api.sendMessage(activeId, currentInput);
 
-    setIsLoading(false);
+      // 3. 답변 반영
+      setMessages((prev: any) => [
+        ...prev,
+        {
+          id: result.assistantMessage.id,
+          sender: "gemini",
+          text: result.assistantMessage.content,
+        },
+      ]);
+
+      // 탄소 데이터는 추후 UI 연동 시 사용 (result.carbonState)
+    } catch (error) {
+      console.error("전송 실패:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -74,39 +80,23 @@ export default function ChatInput({
 
   return (
     <div className={styles.inputContainer}>
-      <div
-        style={{
-          color: "var(--color-polar-accent-start)",
-          textAlign: "center",
-          marginBottom: "10px",
-          fontSize: "12px",
-          fontWeight: "bold",
-        }}
-      >
-        {ready && user
-          ? `🔥 백그라운드 로그인 성공! 내 임시 신분증: ${user.uid}`
-          : "⏳ 인증 서버와 몰래 통신 중..."}
-      </div>
       <div className={styles.inputWrapper}>
         <div className={styles.inputBox}>
           <textarea
             ref={textareaRef}
             className={styles.textarea}
             value={input}
-            onChange={handleInput}
+            onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="북극곰에게 메시지를 남겨보세요."
+            placeholder="메시지를 입력하세요..."
             disabled={isLoading}
-            maxLength={MAX_LENGTH}
             rows={1}
           />
           <button
             className={styles.sendButton}
             onClick={handleSend}
             disabled={isLoading || !input.trim()}
-            aria-label="전송"
           >
-            {/* 전송 아이콘 (SVG) */}
             <svg
               width="20"
               height="20"
@@ -114,25 +104,11 @@ export default function ChatInput({
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
             >
               <line x1="22" y1="2" x2="11" y2="13"></line>
               <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
             </svg>
           </button>
-        </div>
-
-        {/* 하단 텍스트 및 글자 수 카운터 */}
-        <div className={styles.inputFooter}>
-          <div className={styles.footerText}>
-            AI는 실수를 할 수 있습니다. 중요한 정보는 확인하세요.
-          </div>
-          <div
-            className={`${styles.charCount} ${input.length >= MAX_LENGTH ? styles.charMax : ""}`}
-          >
-            {input.length} / {MAX_LENGTH}
-          </div>
         </div>
       </div>
     </div>
