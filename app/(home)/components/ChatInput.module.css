@@ -4,18 +4,29 @@
   width: 100%;
 }
 
+.inputWrapper {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .inputBox {
   display: flex;
   align-items: flex-end;
-  background-color: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: 16px;
-  padding: 0.5rem 1rem;
-  transition: border-color 0.2s;
+  background-color: var(--color-bg-primary);
+  border: 2px solid var(--color-polar-border-light, #e0f2fe);
+  border-radius: 24px; /* 더 둥글고 모던한 느낌 */
+  padding: 0.75rem 0.75rem 0.75rem 1.25rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(2, 132, 199, 0.05); /* 부드러운 그림자 */
 }
 
+/* 텍스트 입력 중일 때 강조 효과 */
 .inputBox:focus-within {
-  border-color: var(--color-text-secondary);
+  border-color: var(--color-polar-accent-start, #0ea5e9);
+  box-shadow: 0 4px 20px rgba(14, 165, 233, 0.15);
 }
 
 .textarea {
@@ -23,12 +34,26 @@
   background: transparent;
   border: none;
   color: var(--color-text-primary);
-  font-size: 1rem;
+  font-size: 1.05rem;
   line-height: 1.5;
   resize: none;
   outline: none;
-  max-height: 200px; /* 길어지면 내부 스크롤 */
-  padding: 0.5rem 0;
+  max-height: 150px; /* 너무 길어지면 내부에서 스크롤 */
+  padding: 6px 0;
+  margin-right: 12px;
+}
+
+/* 텍스트에리어 내부 스크롤바 디자인 */
+.textarea::-webkit-scrollbar {
+  width: 6px;
+}
+.textarea::-webkit-scrollbar-thumb {
+  background-color: var(--color-polar-border);
+  border-radius: 4px;
+}
+
+.textarea::placeholder {
+  color: #94a3b8;
 }
 
 .textarea:disabled {
@@ -36,32 +61,60 @@
   cursor: not-allowed;
 }
 
+/* 원형 전송 버튼 */
 .sendButton {
-  background-color: var(--color-primary);
-  color: var(--color-primary-text);
+  background: linear-gradient(
+    135deg,
+    var(--color-polar-accent-start, #0ea5e9) 0%,
+    var(--color-polar-accent-end, #0369a1) 100%
+  );
+  color: white;
   border: none;
-  border-radius: 8px;
-  padding: 8px 16px;
-  font-weight: 600;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  margin-left: 1rem;
-  margin-bottom: 4px; /* textarea와 하단 라인 맞추기 */
-  transition: opacity 0.2s;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .sendButton:hover:not(:disabled) {
-  opacity: 0.8;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
 }
 
 .sendButton:disabled {
-  background-color: var(--color-border);
+  background: var(--color-border);
   color: var(--color-text-secondary);
   cursor: not-allowed;
+  box-shadow: none;
+}
+
+.inputFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
 }
 
 .footerText {
-  text-align: center;
   font-size: 0.75rem;
   color: var(--color-text-secondary);
-  margin-top: 0.75rem;
+}
+
+.charCount {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  font-family: monospace;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+/* 최대 글자 수에 도달했을 때 경고 색상 */
+.charMax {
+  color: #ef4444;
+  font-weight: 700;
 }
