@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Message } from "../page";
 import styles from "./ChatWindow.module.css";
 
@@ -9,6 +10,12 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ messages, isLoading }: ChatWindowProps) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
+
   return (
     <div className={styles.windowContainer}>
       <div className={styles.messageList}>
@@ -22,7 +29,6 @@ export default function ChatWindow({ messages, isLoading }: ChatWindowProps) {
               key={msg.id}
               className={`${styles.messageWrapper} ${styles[msg.sender]}`}
             >
-              {/* AI(Gemini)일 경우에만 프로필 사진 렌더링 */}
               {msg.sender === "gemini" && (
                 <div className={styles.profilePic}>
                   <img src="/polar.png" alt="AI Polar Bear" />
@@ -34,7 +40,6 @@ export default function ChatWindow({ messages, isLoading }: ChatWindowProps) {
           ))
         )}
 
-        {/* 로딩 중일 때도 AI 프로필 사진 표시 */}
         {isLoading && (
           <div className={`${styles.messageWrapper} ${styles.gemini}`}>
             <div className={styles.profilePic}>
@@ -47,6 +52,7 @@ export default function ChatWindow({ messages, isLoading }: ChatWindowProps) {
             </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
     </div>
   );
