@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, Dispatch, SetStateAction } from "react";
 import { Message } from "../page";
 import styles from "./ChatInput.module.css";
+import { useAuth } from "../../context/AuthContext";
 
 interface ChatInputProps {
   setMessages: Dispatch<SetStateAction<Message[]>>;
@@ -17,6 +18,7 @@ export default function ChatInput({
   isLoading,
   setIsLoading,
 }: ChatInputProps) {
+  const { ready, user } = useAuth();
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -72,6 +74,19 @@ export default function ChatInput({
 
   return (
     <div className={styles.inputContainer}>
+      <div
+        style={{
+          color: "var(--color-polar-accent-start)",
+          textAlign: "center",
+          marginBottom: "10px",
+          fontSize: "12px",
+          fontWeight: "bold",
+        }}
+      >
+        {ready && user
+          ? `🔥 백그라운드 로그인 성공! 내 임시 신분증: ${user.uid}`
+          : "⏳ 인증 서버와 몰래 통신 중..."}
+      </div>
       <div className={styles.inputWrapper}>
         <div className={styles.inputBox}>
           <textarea

@@ -1,6 +1,7 @@
 import Header from "@/components/Header";
 import "./globals.css";
-import { Providers } from "./providers";
+// import { Providers } from "./providers";
+import { AuthProvider } from "./context/AuthContext";
 import { Toaster } from "sonner";
 
 export default function RootLayout({
@@ -11,11 +12,13 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <body>
-        <Providers>
+        <AuthProvider>
+          {/* <Providers> */}
           <Header />
           <main className="main-content">{children}</main>
           <Toaster position="bottom-right" richColors />
-        </Providers>
+          {/* </Providers> */}
+        </AuthProvider>
       </body>
     </html>
   );
