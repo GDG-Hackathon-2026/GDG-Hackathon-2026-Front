@@ -46,9 +46,14 @@ export default function ChatInput({
 
   const [isMounted, setIsMounted] = useState(false);
 
+  // 🔥 1. 마운트 전용 useEffect (Lint 에러 방지용 주석 추가)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
+  }, []);
 
+  // 데이터 로드 로직 useEffect
+  useEffect(() => {
     const initData = async () => {
       // 1. 페르소나 로드
       try {
@@ -61,11 +66,9 @@ export default function ChatInput({
         console.error("페르소나 로드 실패:", e);
       }
 
-      // 2. 서버에서 내 최신 탄소 상태 로드
+      // 2. 서버에서 내 최신 탄소 상태 로드 및 프론트엔드 형식으로 매핑
       try {
         const meData = await api.me();
-
-        // 🔥 핵심 수정: 백엔드의 'carbonUsedG'를 프론트엔드의 'totalCarbonG'로 변환
         const mappedCarbonState = {
           totalCarbonG: meData.carbonUsedG ?? 0,
           stage: meData.stage ?? 0,
@@ -90,6 +93,7 @@ export default function ChatInput({
     }
   }, [ready, user, onCarbonUpdate]);
 
+  // 외부 클릭 시 메뉴 닫기
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -103,6 +107,7 @@ export default function ChatInput({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // 글자수 및 탄소 계산 로직
   const safeCarbonG =
     localCarbon?.totalCarbonG != null ? Number(localCarbon.totalCarbonG) : 0;
 
@@ -114,7 +119,6 @@ export default function ChatInput({
   const currentMaxLength = isNaN(calculatedMax)
     ? BASE_MAX_LENGTH
     : calculatedMax;
-
   const meltRatio = Math.min(1, Math.max(0, safeCarbonG));
 
   const adjustTextareaHeight = () => {
@@ -203,10 +207,11 @@ export default function ChatInput({
     }
   };
 
+  // 🔥 3. 최신 함수를 담아두는 ref (Lint의 exhaustive-deps 에러 해결!)
   const handleSendRef = useRef(handleSend);
   useEffect(() => {
     handleSendRef.current = handleSend;
-  }, [handleSend]);
+  }); // 👈 의존성 배열을 아예 비우면 렌더링될 때마다 에러 없이 조용히 업데이트됩니다.
 
   useEffect(() => {
     const handleGlobalSuggestion = (e: Event) => {
