@@ -101,6 +101,7 @@ export default function HomePage() {
           messages={messages}
           setMessages={setMessages}
           isLoading={isLoading}
+          totalCarbonG={carbonState.totalCarbonG}
         />
         <ChatInput
           selectedId={selectedId}

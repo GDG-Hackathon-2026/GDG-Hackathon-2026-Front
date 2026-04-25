@@ -34,18 +34,15 @@ export default function ChatInput({
   const { ready, user } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 🔥 로컬에서 관리할 탄소 상태에 totalCarbonG 추가
   const [localCarbon, setLocalCarbon] = useState<{
     totalCarbonG: number;
     meltingPercent: number;
   } | null>(null);
 
-  // 1. 초기 로드 시 로컬 스토리지에서 상태 가져오기
   useEffect(() => {
     const savedCarbon = localStorage.getItem("carbonState");
     if (savedCarbon) {
       try {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLocalCarbon(JSON.parse(savedCarbon));
       } catch (e) {
         console.error("탄소 상태 파싱 실패:", e);
@@ -53,40 +50,71 @@ export default function ChatInput({
     }
   }, []);
 
-  // 2. 동적 글자수 계산 (totalCarbonG 기준: 0g = 500자, 1g = 0자)
   const currentMaxLength = localCarbon
-    ? Math.max(
-        0,
-        Math.floor(BASE_MAX_LENGTH * (1 - localCarbon.totalCarbonG)), // 1g 기준이므로 totalCarbonG / 1 과 동일
-      )
+    ? Math.max(0, Math.floor(BASE_MAX_LENGTH * (1 - localCarbon.totalCarbonG)))
     : BASE_MAX_LENGTH;
 
-  // 🐻‍❄️ 북극곰 변이 로직
+  const meltRatio = localCarbon
+    ? Math.min(1, Math.max(0, localCarbon.totalCarbonG))
+    : 0;
+
+  const adjustTextareaHeight = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      const currentScrollHeight = textareaRef.current.scrollHeight;
+
+      textareaRef.current.style.height = `${Math.min(currentScrollHeight, 150)}px`;
+
+      if (currentScrollHeight >= 150) {
+        textareaRef.current.style.overflowY = "auto";
+      } else {
+        textareaRef.current.style.overflowY = "hidden";
+      }
+    }
+  };
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [input]);
+
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     const cursor = e.target.selectionStart;
+
+    if (val.length > currentMaxLength) return;
 
     if (val.length > input.length) {
       if (Math.random() < 0.2) {
         const before = val.slice(0, cursor - 1);
         const after = val.slice(cursor);
-        setInput(before + "🐻‍❄️" + after);
-        return;
+        const newText = before + "🐻‍❄️" + after;
+
+        if (newText.length <= currentMaxLength) {
+          setInput(newText);
+          return;
+        }
       }
     }
     setInput(val);
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading || !ready || !user) return;
+  // 🔥 forcedText를 인자로 받을 수 있도록 변경 (버튼 클릭 이벤트 대비 any 타입 처리)
+  const handleSend = async (forcedText?: string | any) => {
+    // 문자열이 강제로 넘어왔으면 그걸 쓰고, 아니면 input 상태 사용
+    const textToSend = typeof forcedText === "string" ? forcedText : input;
 
-    const currentInput = input;
+    if (!textToSend.trim() || isLoading || !ready || !user) return;
+
     setInput("");
     setIsLoading(true);
 
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+
     setMessages((prev) => [
       ...prev,
-      { id: Date.now(), sender: "user", text: currentInput },
+      { id: Date.now(), sender: "user", text: textToSend },
     ]);
 
     try {
@@ -94,13 +122,13 @@ export default function ChatInput({
 
       if (!activeId) {
         const newConv = await api.createConversation(
-          currentInput.substring(0, 15),
+          textToSend.substring(0, 15),
         );
         activeId = newConv.id;
         onConversationCreated(activeId);
       }
 
-      const result = await api.sendMessage(activeId, currentInput);
+      const result = await api.sendMessage(activeId, textToSend);
 
       setMessages((prev) => [
         ...prev,
@@ -111,14 +139,9 @@ export default function ChatInput({
         },
       ]);
 
-      // 🔥 3. 로컬 스토리지 저장 및 상태 업데이트
       localStorage.setItem("carbonState", JSON.stringify(result.carbonState));
       setLocalCarbon(result.carbonState);
       onCarbonUpdate(result.carbonState);
-
-      if (result.truncated) {
-        console.warn("입력 토큰 제한으로 인해 컨텍스트가 일부 잘렸습니다.");
-      }
     } catch (error) {
       console.error("전송 에러:", error);
       if (error instanceof Error && error.message.includes("402")) {
@@ -136,12 +159,35 @@ export default function ChatInput({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      handleSend(); // 파라미터 없이 호출하면 기본 input 값을 사용함
     }
   };
 
+  // 🔥 최신 handleSend 함수를 담아둘 ref (클로저 상태 꼬임 방지)
+  const handleSendRef = useRef(handleSend);
+  useEffect(() => {
+    handleSendRef.current = handleSend;
+  }, [handleSend]);
+
+  // 🔥 ChatWindow에서 쏜 이벤트 낚아채기
+  useEffect(() => {
+    const handleGlobalSuggestion = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      // 이벤트에 실려온 추천 질문 텍스트를 바로 전송
+      handleSendRef.current(customEvent.detail);
+    };
+
+    window.addEventListener("suggestionClicked", handleGlobalSuggestion);
+    return () => {
+      window.removeEventListener("suggestionClicked", handleGlobalSuggestion);
+    };
+  }, []);
+
   return (
-    <div className={styles.inputContainer}>
+    <div
+      className={styles.inputContainer}
+      style={{ "--melt-ratio": meltRatio } as React.CSSProperties}
+    >
       <div className={styles.inputWrapper}>
         <div className={styles.inputBox}>
           <textarea
@@ -150,7 +196,6 @@ export default function ChatInput({
             value={input}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            // 🔥 4. 동적 글자수 제한 적용 및 0자일 때 입력창 비활성화
             placeholder={
               currentMaxLength <= 0
                 ? "탄소 배출량 1g 도달. 빙하가 모두 녹아 더 이상 입력할 수 없습니다..."
@@ -179,9 +224,10 @@ export default function ChatInput({
           </button>
         </div>
         <div className={styles.inputFooter}>
-          <div className={styles.footerText}>AI는 실수를 할 수 있습니다.</div>
+          <div className={styles.footerText}>
+            이 AI는 자주 많은 실수를 합니다.
+          </div>
           <div className={styles.charCount}>
-            {/* 🔥 5. 변화하는 최대 글자수 UI 반영 */}
             {input.length} / {currentMaxLength}
           </div>
         </div>

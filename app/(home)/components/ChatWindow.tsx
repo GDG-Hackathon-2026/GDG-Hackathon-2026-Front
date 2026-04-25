@@ -6,11 +6,14 @@ import { Message } from "../page";
 import { api } from "../../lib/api";
 import styles from "./ChatWindow.module.css";
 
+const BASE_MAX_LENGTH = 500; // 🔥 ChatInput과 동일한 기준
+
 interface ChatWindowProps {
   selectedId: number | null;
   messages: Message[];
   setMessages: Dispatch<SetStateAction<Message[]>>;
   isLoading: boolean;
+  totalCarbonG: number; // 🔥 부모로부터 전달받음
 }
 
 export default function ChatWindow({
@@ -18,20 +21,25 @@ export default function ChatWindow({
   messages,
   setMessages,
   isLoading,
+  totalCarbonG,
 }: ChatWindowProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 1. 방이 바뀌면 메시지 목록 새로고침
+  // 🔥 현재 허용된 최대 글자 수 계산
+  const currentMaxLength = Math.max(
+    0,
+    Math.floor(BASE_MAX_LENGTH * (1 - totalCarbonG)),
+  );
+
   useEffect(() => {
     if (!selectedId) {
-      setMessages([]); // 선택된 방이 없으면 비우기
+      setMessages([]);
       return;
     }
 
     const fetchMessages = async () => {
       try {
         const data = await api.getConversation(selectedId);
-        // API의 Message 형식을 우리 UI 형식으로 매핑
         const mappedMessages: Message[] = data.messages.map((m) => ({
           id: m.id,
           sender: m.role === "USER" ? "user" : "gemini",
@@ -46,17 +54,59 @@ export default function ChatWindow({
     fetchMessages();
   }, [selectedId, setMessages]);
 
-  // 2. 스크롤 하단 고정
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
+
+  const handleSuggestionClick = (text: string) => {
+    // 🔥 혹시라도 클릭됐을 때 방어 로직
+    if (text.length > currentMaxLength) return;
+    const event = new CustomEvent("suggestionClicked", { detail: text });
+    window.dispatchEvent(event);
+  };
+
+  // 🔥 템플릿 렌더링을 깔끔하게 해주는 헬퍼 함수
+  const renderSuggestion = (icon: string, text: string) => {
+    const isDisabled = text.length > currentMaxLength;
+    return (
+      <div
+        className={`${styles.suggestionCard} ${
+          isDisabled ? styles.disabledCard : ""
+        }`}
+        onClick={() => !isDisabled && handleSuggestionClick(text)}
+      >
+        <span className={styles.cardIcon}>{icon}</span>
+        <p>{text}</p>
+      </div>
+    );
+  };
 
   return (
     <div className={styles.windowContainer}>
       <div className={styles.messageList}>
         {!selectedId && messages.length === 0 ? (
           <div className={styles.emptyState}>
-            <h2>Polar.ai에 오신 것을 환영합니다</h2>
+            <div className={styles.logoWrapper}>
+              <Image
+                src="/polar.png"
+                alt="Polar.ai"
+                width={80}
+                height={80}
+                className={styles.emptyLogo}
+              />
+            </div>
+            <h2 className={styles.emptyTitle}>어떤 도움이 필요하신가요?</h2>
+            <p className={styles.emptySubtitle}>
+              아! 근데 도움을 드리진 않습니다!
+            </p>
+
+            <div className={styles.suggestionGrid}>
+              {/* 🔥 헬퍼 함수로 깔끔하게 렌더링 */}
+              {renderSuggestion("🌍", "빙수와 빙하의 공통점")}
+              {renderSuggestion("🧊", "북극곰의 생태계와 빙하의 관계")}
+              {renderSuggestion("💻", "효율적인 코드 작성으로 전력 아끼기")}
+              {renderSuggestion("🌱", "지속 가능한 IT 기술 트렌드 5가지")}
+            </div>
           </div>
         ) : (
           messages.map((msg) => (
@@ -78,15 +128,18 @@ export default function ChatWindow({
             </div>
           ))
         )}
+
         {isLoading && (
           <div className={`${styles.messageWrapper} ${styles.gemini}`}>
             <div className={styles.profilePic}>
               <Image src="/polar.png" alt="AI" width={40} height={40} />
             </div>
-            <div
-              className={`${styles.messageBubble} ${styles.loadingIndicator}`}
-            >
-              답변 중...
+            <div className={`${styles.messageBubble} ${styles.loadingBubble}`}>
+              <div className={styles.typingIndicator}>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
             </div>
           </div>
         )}

@@ -9,7 +9,7 @@ import styles from "./Sidebar.module.css";
 interface SidebarProps {
   selectedId: number | null;
   onSelect: (id: number) => void;
-  onTitleChange?: (title: string) => void; // 🔥 추가됨
+  onTitleChange?: (title: string) => void;
 }
 
 export default function Sidebar({
@@ -35,7 +35,6 @@ export default function Sidebar({
     fetchConversations();
   }, [ready, user]);
 
-  // 🔥 selectedId나 대화 목록이 바뀔 때마다 현재 제목을 찾아 부모에게 전달
   useEffect(() => {
     if (onTitleChange) {
       if (!selectedId) {
@@ -53,20 +52,26 @@ export default function Sidebar({
         className={styles.newChatBtn}
         onClick={() => window.location.reload()}
       >
-        <Plus size={18} />
+        <Plus size={18} className={styles.plusIcon} />
         <span>새로운 대화</span>
       </button>
 
       <div className={styles.listContainer}>
         <h3 className={styles.listTitle}>최근 대화</h3>
         <ul className={styles.chatList}>
-          {conversations.map((conv) => (
+          {conversations.map((conv, index) => (
             <li
               key={conv.id}
               className={`${styles.chatItem} ${
                 selectedId === conv.id ? styles.active : ""
               }`}
               onClick={() => onSelect(conv.id)}
+              // 🔥 순차적 등장 애니메이션을 위한 인덱스 기반 딜레이 주입
+              style={
+                {
+                  "--animation-delay": `${index * 0.05}s`,
+                } as React.CSSProperties
+              }
             >
               <MessageSquare size={16} className={styles.chatIcon} />
               <span className={styles.chatTitle}>
