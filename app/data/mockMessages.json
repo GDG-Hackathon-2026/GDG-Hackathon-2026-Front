@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "sender": "user",
+    "text": "안녕, 너는 누구니?"
+  },
+  {
+    "id": 2,
+    "sender": "gemini",
+    "text": "저는 Google의 Gemini입니다. 무엇을 도와드릴까요?"
+  },
+  {
+    "id": 3,
+    "sender": "user",
+    "text": "맛있는 저녁 메뉴 추천해줘."
+  }
+]

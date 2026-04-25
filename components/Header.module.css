@@ -2,11 +2,14 @@
   position: sticky;
   top: 0;
   height: var(--header-height);
-  border-bottom: 1px solid var(--color-border);
-  background-color: var(--color-bg-primary);
+  background-color: var(--color-bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--color-polar-border-light);
   z-index: 50;
   display: flex;
   align-items: center;
+  box-shadow: 0 4px 20px var(--color-shadow-glass);
 }
 
 .headerNav {
@@ -19,25 +22,52 @@
   align-items: center;
 }
 
-.logo {
-  font-weight: 800;
-  font-size: 20px;
+.logoContainer {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* 로고와 텍스트 사이 간격 */
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+
+.logoContainer:hover {
+  transform: translateY(-1px);
+}
+
+.svgLogo {
+  filter: drop-shadow(0 2px 4px rgba(2, 132, 199, 0.15));
+}
+
+.logoText {
+  font-weight: 900;
+  font-size: 24px;
   letter-spacing: -0.5px;
+  background: linear-gradient(
+    135deg,
+    var(--color-polar-accent-start) 0%,
+    var(--color-polar-accent-end) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .navLinks {
   display: flex;
-  gap: 32px;
+  gap: 24px;
   align-items: center;
 }
 
 .navLink {
   font-size: 15px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  transition: color 0.2s ease;
+  font-weight: 600;
+  color: var(--color-polar-link);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  padding: 8px 16px;
+  border-radius: 20px;
 }
 
 .navLink:hover {
-  color: var(--color-text-primary);
+  color: var(--color-polar-link-hover);
+  background-color: var(--color-polar-bg);
 }
