@@ -1,121 +1,152 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { api, MeResponse, GlobalStatsResponse } from "../lib/api";
+import { useAuth } from "../context/AuthContext";
+import { Globe, User, RefreshCw, AlertTriangle } from "lucide-react";
 import styles from "./Impact.module.css";
 
-// 과학적 근거 기반 상수
-const ACTIVE_AI_USERS = 200_000_000; // 글로벌 AI 사용자 (2억명)
-const DAYS_IN_YEAR = 365;
-const ICE_MELT_PER_TON_M2 = 3; // CO2 1톤당 3m^2 융해 (Science, 2016)
-const SOCCER_FIELD_M2 = 7140; // 축구장 1개 면적 (m^2)
-
 export default function ImpactPage() {
-  const [carbonData, setCarbonData] = useState({
-    totalCarbonG: 0,
-    meltingPercent: 0, // 이제 시각화 UI용 보조 수치로만 사용
-  });
+  const { ready, user } = useAuth();
+  const [myStats, setMyStats] = useState<MeResponse | null>(null);
+  const [globalStats, setGlobalStats] = useState<GlobalStatsResponse | null>(
+    null,
+  );
+  const [isResetting, setIsResetting] = useState(false);
+
+  const loadData = async () => {
+    if (!ready || !user) return;
+    try {
+      const [meRes, statsRes] = await Promise.all([
+        api.me(),
+        api.getGlobalStats(),
+      ]);
+      setMyStats(meRes);
+      setGlobalStats(statsRes);
+      localStorage.setItem("carbonState", JSON.stringify(meRes));
+    } catch (e) {
+      console.error("데이터 로드 실패:", e);
+    }
+  };
 
   useEffect(() => {
-    const loadCarbonData = () => {
-      const saved = localStorage.getItem("carbonState");
-      if (saved) {
-        try {
-          setCarbonData(JSON.parse(saved));
-        } catch (e) {
-          console.error("데이터 로드 실패:", e);
-        }
-      }
-    };
-    loadCarbonData();
-    window.addEventListener("storage", loadCarbonData);
-    return () => window.removeEventListener("storage", loadCarbonData);
-  }, []);
+    loadData();
+  }, [ready, user]);
 
-  const { totalCarbonG } = carbonData;
+  const handleReset = async () => {
+    if (!window.confirm("정말로 탄소 배출량을 초기화하시겠습니까?")) return;
+    setIsResetting(true);
+    try {
+      const res = await api.resetCarbon();
+      setMyStats(res);
+      localStorage.setItem("carbonState", JSON.stringify(res));
+      await loadData(); // 글로벌 통계 갱신
+      alert("탄소 배출량이 성공적으로 초기화되었습니다.");
+    } catch (e) {
+      console.error("초기화 실패:", e);
+      alert("초기화에 실패했습니다.");
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
-  // 🌍 팩트 기반 계산 로직
-  // 1. 당신의 배출량을 하루 배출량으로 가정하여 전 세계가 1년 동안 쓴다면?
-  const annualGlobalCarbonTons =
-    (totalCarbonG * ACTIVE_AI_USERS * DAYS_IN_YEAR) / 1_000_000;
+  if (!myStats || !globalStats) {
+    return <div className={styles.loading}>데이터를 불러오는 중입니다...</div>;
+  }
 
-  // 2. 실제로 녹아내리는 빙하의 면적 (m^2)
-  const meltedIceM2 = annualGlobalCarbonTons * ICE_MELT_PER_TON_M2;
-
-  // 3. 축구장 개수로 환산
-  const meltedSoccerFields = Math.floor(meltedIceM2 / SOCCER_FIELD_M2);
-
-  // 시각화용 높이 계산 (축구장 200개를 최대치로 설정하여 애니메이션 조절)
-  const visualScale = Math.min((meltedSoccerFields / 200) * 100, 100);
-  const glacierHeight = 300 - visualScale * 2.4;
-  const waterHeight = 40 + visualScale * 1.6;
+  const meltRatio = Math.min(1, Math.max(0, myStats.carbonUsedG));
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>The Real Impact</h1>
         <p className={styles.description}>
-          전 세계 2억 명의 사용자가 당신처럼 AI를 1년간 사용한다면 발생하는{" "}
-          <strong>실제 물리적 변화</strong>입니다.
+          AI 모델 사용이 지구에 미치는 물리적 영향을 실시간으로 확인하세요.
         </p>
       </div>
 
-      <div className={styles.scene}>
-        {/* 빙하 */}
-        <div
-          className={styles.glacier}
-          style={{ height: `${glacierHeight}px` }}
-        >
-          {visualScale < 100 && (
-            <span
-              style={{
-                position: "absolute",
-                top: "-30px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                fontSize: "32px",
-                opacity: 1 - visualScale / 100,
-              }}
-            >
-              🐻‍❄️
-            </span>
-          )}
-        </div>
-        {/* 해수면 */}
-        <div className={styles.water} style={{ height: `${waterHeight}px` }} />
+      <div
+        className={styles.scene}
+        style={{ "--melt-ratio": meltRatio } as React.CSSProperties}
+      >
+        <div className={styles.glacier} />
+        <div className={styles.water} />
+        <div className={styles.bear}>{meltRatio < 1 ? "🐻‍❄️" : "💦"}</div>
       </div>
 
-      <div className={styles.statsCard}>
-        <div className={styles.statItem}>
-          <span className={styles.label}>나의 1회 사용 탄소량</span>
-          <span className={styles.value}>{totalCarbonG.toFixed(3)}g</span>
-        </div>
-        <div
-          className={styles.statItem}
-          style={{
-            borderTop: "1px solid var(--color-border)",
-            paddingTop: "12px",
-            marginTop: "12px",
-          }}
-        >
-          <span className={styles.label}>지구 연간 빙하 손실 면적</span>
-          <span className={styles.value}>
-            {meltedIceM2.toLocaleString(undefined, {
-              maximumFractionDigits: 0,
-            })}{" "}
-            m²
-          </span>
-        </div>
-        <div className={styles.statItem}>
-          <span className={styles.label}>환산 크기</span>
-          <span className={styles.value} style={{ color: "#ef4444" }}>
-            축구장 {meltedSoccerFields.toLocaleString()}개
-          </span>
+      <div className={styles.dashboardGrid}>
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <User size={20} className={styles.iconBlue} />
+            <h2>내 탄소 발자국</h2>
+          </div>
+          <div className={styles.statList}>
+            <div className={styles.statItem}>
+              <span className={styles.label}>누적 배출량</span>
+              <span className={styles.value}>
+                {myStats.carbonUsedG.toFixed(3)} g
+              </span>
+            </div>
+            <div className={styles.statItem}>
+              <span className={styles.label}>빙하 융해율</span>
+              <span className={styles.value}>{myStats.meltingPercent}%</span>
+            </div>
+            <div className={styles.statItem}>
+              <span className={styles.label}>현재 단계</span>
+              <span className={styles.value}>Stage {myStats.stage}</span>
+            </div>
+          </div>
         </div>
 
-        <div className={styles.infoText}>
-          ※ Science (Notz & Stroeve, 2016) 연구 기반: 이산화탄소 1톤당 3m²의
-          해빙 융해
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <Globe size={20} className={styles.iconGreen} />
+            <h2>글로벌 통합 통계</h2>
+          </div>
+          <div className={styles.statList}>
+            <div className={styles.statItem}>
+              <span className={styles.label}>전체 누적 배출량</span>
+              <span className={styles.value}>
+                {globalStats.totalCarbonG.toFixed(2)} g
+              </span>
+            </div>
+            <div className={styles.statItem}>
+              <span className={styles.label}>손실된 해빙 면적</span>
+              <span className={styles.valueDanger}>
+                {globalStats.equivalents.seaIceLossM2.toFixed(4)} m²
+              </span>
+            </div>
+            <div className={styles.statItem}>
+              <span className={styles.label}>참여 중인 유저</span>
+              <span className={styles.value}>
+                {globalStats.activeUserCount} 명
+              </span>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div className={styles.resetSection}>
+        <div className={styles.resetInfo}>
+          <AlertTriangle size={20} className={styles.iconWarning} />
+          <span>
+            초기화 시 대화 내역은 유지되지만, 탄소 누적치만 0으로 돌아갑니다.
+          </span>
+        </div>
+        <button
+          className={styles.resetButton}
+          onClick={handleReset}
+          disabled={isResetting || myStats.carbonUsedG === 0}
+        >
+          {isResetting ? (
+            "초기화 중..."
+          ) : (
+            <>
+              <RefreshCw size={16} />
+              탄소 배출량 초기화
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

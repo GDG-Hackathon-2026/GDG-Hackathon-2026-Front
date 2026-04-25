@@ -221,3 +221,18 @@
     transform: translateY(0px);
   }
 }
+
+.disabledCard {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background-color: var(--color-bg-secondary); /* 살짝 회색빛 */
+  border-color: var(--color-border);
+}
+
+.disabledCard:hover {
+  /* 호버 애니메이션 무효화 */
+  transform: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+  background-color: var(--color-bg-secondary);
+  border-color: var(--color-border);
+}

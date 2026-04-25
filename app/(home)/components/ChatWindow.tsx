@@ -6,11 +6,14 @@ import { Message } from "../page";
 import { api } from "../../lib/api";
 import styles from "./ChatWindow.module.css";
 
+const BASE_MAX_LENGTH = 500; // 🔥 ChatInput과 동일한 기준
+
 interface ChatWindowProps {
   selectedId: number | null;
   messages: Message[];
   setMessages: Dispatch<SetStateAction<Message[]>>;
   isLoading: boolean;
+  totalCarbonG: number; // 🔥 부모로부터 전달받음
 }
 
 export default function ChatWindow({
@@ -18,8 +21,15 @@ export default function ChatWindow({
   messages,
   setMessages,
   isLoading,
+  totalCarbonG,
 }: ChatWindowProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 🔥 현재 허용된 최대 글자 수 계산
+  const currentMaxLength = Math.max(
+    0,
+    Math.floor(BASE_MAX_LENGTH * (1 - totalCarbonG)),
+  );
 
   useEffect(() => {
     if (!selectedId) {
@@ -48,10 +58,27 @@ export default function ChatWindow({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  // 🔥 추천 질문 클릭 시 커스텀 이벤트 발송
   const handleSuggestionClick = (text: string) => {
+    // 🔥 혹시라도 클릭됐을 때 방어 로직
+    if (text.length > currentMaxLength) return;
     const event = new CustomEvent("suggestionClicked", { detail: text });
     window.dispatchEvent(event);
+  };
+
+  // 🔥 템플릿 렌더링을 깔끔하게 해주는 헬퍼 함수
+  const renderSuggestion = (icon: string, text: string) => {
+    const isDisabled = text.length > currentMaxLength;
+    return (
+      <div
+        className={`${styles.suggestionCard} ${
+          isDisabled ? styles.disabledCard : ""
+        }`}
+        onClick={() => !isDisabled && handleSuggestionClick(text)}
+      >
+        <span className={styles.cardIcon}>{icon}</span>
+        <p>{text}</p>
+      </div>
+    );
   };
 
   return (
@@ -74,41 +101,11 @@ export default function ChatWindow({
             </p>
 
             <div className={styles.suggestionGrid}>
-              {/* 🔥 onClick 이벤트 연결 */}
-              <div
-                className={styles.suggestionCard}
-                onClick={() => handleSuggestionClick("빙수와 빙하의 공통점")}
-              >
-                <span className={styles.cardIcon}>🌍</span>
-                <p>빙수와 빙하의 공통점</p>
-              </div>
-              <div
-                className={styles.suggestionCard}
-                onClick={() =>
-                  handleSuggestionClick("북극곰의 생태계와 빙하의 관계")
-                }
-              >
-                <span className={styles.cardIcon}>🧊</span>
-                <p>북극곰의 생태계와 빙하의 관계</p>
-              </div>
-              <div
-                className={styles.suggestionCard}
-                onClick={() =>
-                  handleSuggestionClick("효율적인 코드 작성으로 전력 아끼기")
-                }
-              >
-                <span className={styles.cardIcon}>💻</span>
-                <p>효율적인 코드 작성으로 전력 아끼기</p>
-              </div>
-              <div
-                className={styles.suggestionCard}
-                onClick={() =>
-                  handleSuggestionClick("지속 가능한 IT 기술 트렌드 5가지")
-                }
-              >
-                <span className={styles.cardIcon}>🌱</span>
-                <p>지속 가능한 IT 기술 트렌드 5가지</p>
-              </div>
+              {/* 🔥 헬퍼 함수로 깔끔하게 렌더링 */}
+              {renderSuggestion("🌍", "빙수와 빙하의 공통점")}
+              {renderSuggestion("🧊", "북극곰의 생태계와 빙하의 관계")}
+              {renderSuggestion("💻", "효율적인 코드 작성으로 전력 아끼기")}
+              {renderSuggestion("🌱", "지속 가능한 IT 기술 트렌드 5가지")}
             </div>
           </div>
         ) : (

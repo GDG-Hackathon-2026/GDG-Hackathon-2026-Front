@@ -1,4 +1,3 @@
-// app/lib/api.ts
 import { auth } from "./firebase";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
@@ -20,7 +19,6 @@ async function fetchWithAuth(path: string, init?: RequestInit) {
   return res.json();
 }
 
-// 우리가 쓸 API 함수들 모음
 export const api = {
   ping: async () => {
     const res = await fetch(`${API_URL}/api/ping`);
@@ -35,7 +33,6 @@ export const api = {
       body: JSON.stringify({ title: title || "New conversation" }),
     }),
 
-  // 방금 사이드바에서 썼던 대화 목록 불러오기 함수 추가!
   listConversations: (): Promise<Conversation[]> =>
     fetchWithAuth("/api/conversations"),
 
@@ -47,9 +44,13 @@ export const api = {
 
   getConversation: (id: number): Promise<ConversationView> =>
     fetchWithAuth(`/api/conversations/${id}`),
-};
 
-// ---- 아래는 백엔드 응답에 맞춘 타입스크립트 인터페이스들 ----
+  resetCarbon: (): Promise<MeResponse> =>
+    fetchWithAuth("/api/me/carbon/reset", { method: "POST" }),
+
+  getGlobalStats: (): Promise<GlobalStatsResponse> =>
+    fetchWithAuth("/api/stats/carbon"),
+};
 
 export interface MeResponse {
   uid: string;
@@ -97,4 +98,17 @@ export interface SendResult {
 export interface ConversationView {
   conversation: Conversation;
   messages: Message[];
+}
+
+export interface GlobalStatsResponse {
+  userCount: number;
+  activeUserCount: number;
+  totalCarbonG: number;
+  averageCarbonG: number;
+  averageActiveCarbonG: number;
+  equivalents: {
+    seaIceLossM2: number;
+    carKm: number;
+    phoneCharges: number;
+  };
 }
