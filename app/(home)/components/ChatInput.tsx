@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { api } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 import styles from "./ChatInput.module.css";
+
+const MAX_LENGTH = 500;
 
 interface ChatInputProps {
   selectedId: number | null;
@@ -11,6 +13,8 @@ interface ChatInputProps {
   setMessages: any;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
+  // 🔥 탄소 상태 업데이트를 위한 함수 추가
+  onCarbonUpdate: (state: any) => void;
 }
 
 export default function ChatInput({
@@ -19,6 +23,7 @@ export default function ChatInput({
   setMessages,
   isLoading,
   setIsLoading,
+  onCarbonUpdate,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
   const { ready, user } = useAuth();
@@ -31,7 +36,7 @@ export default function ChatInput({
     setInput("");
     setIsLoading(true);
 
-    // 유저 메시지 선 반영
+    // 1. 유저 메시지 즉시 렌더링
     setMessages((prev: any) => [
       ...prev,
       { id: Date.now(), sender: "user", text: currentInput },
@@ -40,9 +45,8 @@ export default function ChatInput({
     try {
       let activeId = selectedId;
 
-      // 1. 선택된 방이 없으면 새 방 생성
+      // 2. 방이 없다면 생성부터 (POST /api/conversations)
       if (!activeId) {
-        // 첫 메시지의 앞부분을 제목으로 사용
         const newConv = await api.createConversation(
           currentInput.substring(0, 15),
         );
@@ -50,10 +54,10 @@ export default function ChatInput({
         onConversationCreated(activeId);
       }
 
-      // 2. 메시지 전송 및 Gemini 호출
+      // 3. 메시지 전송 및 Gemini 호출 (POST /api/conversations/{id}/messages)
       const result = await api.sendMessage(activeId, currentInput);
 
-      // 3. 답변 반영
+      // 4. AI 답변 렌더링
       setMessages((prev: any) => [
         ...prev,
         {
@@ -63,15 +67,27 @@ export default function ChatInput({
         },
       ]);
 
-      // 탄소 데이터는 추후 UI 연동 시 사용 (result.carbonState)
-    } catch (error) {
-      console.error("전송 실패:", error);
+      // 5. 🧊 중요: 탄소 상태 업데이트 (UI 녹아내림 강도 조절용)
+      onCarbonUpdate(result.carbonState);
+
+      if (result.truncated) {
+        console.warn("입력 토큰 제한으로 인해 컨텍스트가 일부 잘렸습니다.");
+      }
+    } catch (error: any) {
+      console.error("전송 에러:", error);
+      if (error.message.includes("402")) {
+        alert(
+          "🚨 탄소 배출량이 한계치에 도달하여 북극곰의 터전이 모두 녹았습니다. 더 이상 메시지를 보낼 수 없습니다.",
+        );
+      } else {
+        alert("메시지 전송에 실패했습니다.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -90,6 +106,7 @@ export default function ChatInput({
             onKeyDown={handleKeyDown}
             placeholder="메시지를 입력하세요..."
             disabled={isLoading}
+            maxLength={MAX_LENGTH}
             rows={1}
           />
           <button
@@ -109,6 +126,12 @@ export default function ChatInput({
               <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
             </svg>
           </button>
+        </div>
+        <div className={styles.inputFooter}>
+          <div className={styles.footerText}>AI는 실수를 할 수 있습니다.</div>
+          <div className={styles.charCount}>
+            {input.length} / {MAX_LENGTH}
+          </div>
         </div>
       </div>
     </div>
