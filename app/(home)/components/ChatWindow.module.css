@@ -1,7 +1,7 @@
 .windowContainer {
   flex: 1;
   overflow-y: auto;
-  padding: 2rem 24px; /* 좌우 패딩 추가 */
+  padding: 1rem 0px; /* 좌우 패딩 추가 */
   display: flex;
   flex-direction: column;
 }

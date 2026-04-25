@@ -20,12 +20,10 @@
   padding: 0.75rem 0.75rem 0.75rem 1.25rem;
   transition: all 0.3s ease;
   box-shadow: 0 4px 20px rgba(2, 132, 199, 0.05);
-
-  /* 1. 기본 하늘 배경 (흰색) */
   background-color: #ffffff;
   position: relative;
-  overflow: hidden; /* 요소 밖으로 나가는 빙하/물을 둥근 모서리에 맞게 잘라냄 */
-  isolation: isolate; /* z-index 레이어가 꼬이지 않게 보호 */
+  overflow: hidden;
+  isolation: isolate;
 }
 
 .inputBox:focus-within {
@@ -33,7 +31,6 @@
   box-shadow: 0 4px 20px rgba(14, 165, 233, 0.15);
 }
 
-/* 2. 얼음 레이어: 뾰족한 5개의 빙하 산맥 */
 .inputBox::before {
   content: "";
   position: absolute;
@@ -41,10 +38,7 @@
   right: 0;
   bottom: 0;
   height: 100%;
-  /* 눈 덮인 연한 하늘색/흰색 그라데이션 */
   background: linear-gradient(180deg, #e0f2fe 0%, #f0f9ff 100%);
-
-  /* 🔥 진짜 산맥 모양 깎기 (5개의 봉우리) */
   clip-path: polygon(
     0% 100%,
     0% 30%,
@@ -58,44 +52,31 @@
     100% 35%,
     100% 100%
   );
-
-  /* 탄소량(var(--melt-ratio))이 증가할수록 빙하가 밑으로 물리적으로 가라앉음 */
   transform: translateY(calc(var(--melt-ratio) * 100%));
   transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: -2;
 }
 
-/* 3. 물결 레이어: SVG 자연 파도 패턴 (화면 너비 무한 대응) */
 .inputBox::after {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-
-  /* 🔥 0일 때 0px로 아예 안 보임 -> 1일 때 130px 높이까지 차오름 */
   height: calc(var(--melt-ratio) * 130px);
-
-  /* 🔥 무한하게 찰랑거리는 2겹의 진짜 사인파(Sine Wave) SVG 이미지 */
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 50'%3E%3Cpath d='M0,25 C250,50 250,0 500,25 C750,50 750,0 1000,25 L1000,50 L0,50 Z' fill='%237dd3fc' opacity='0.9' /%3E%3Cpath d='M0,25 C250,0 250,50 500,25 C750,0 750,50 1000,25 L1000,50 L0,50 Z' fill='%23bae6fd' opacity='0.6' /%3E%3C/svg%3E"),
-    linear-gradient(#7dd3fc, #7dd3fc); /* 물결 아래 빈 공간을 채워주는 바닷물 색상 */
-
+    linear-gradient(#7dd3fc, #7dd3fc);
   background-repeat: repeat-x, no-repeat;
-  /* 물결 1개 패턴의 너비 1000px, 높이 50px */
   background-size:
     1000px 50px,
     100% calc(100% - 48px);
-
-  animation: naturalWave 7s infinite linear; /* 파도가 흐르는 애니메이션 */
-  transition: height 0.8s cubic-bezier(0.4, 0, 0.2, 1); /* 차오르는 건 부드럽게 */
+  animation: naturalWave 7s infinite linear;
+  transition: height 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: -1;
-
-  /* 높이가 0일 때 잔상 제거 */
   opacity: calc(var(--melt-ratio) * 100);
 }
 
-/* 무한 물결 스크롤 애니메이션 */
 @keyframes naturalWave {
   0% {
     background-position:
@@ -106,55 +87,29 @@
     background-position:
       1000px 0,
       0 48px;
-  } /* 패턴 너비인 1000px만큼 이동 후 반복 */
+  }
 }
 
-/* 입력창 내부 텍스트 셋팅 */
 .textarea {
   flex: 1;
   background: transparent;
   border: none;
-  color: var(--color-text-primary);
+  color: #1e293b;
   font-size: 1.05rem;
   line-height: 1.5;
   resize: none;
   outline: none;
-  /* 🔥 자동 높이 조절을 위해 min-height와 overflow-y 조절 */
-  min-height: 24px;
   max-height: 150px;
-  overflow-y: auto;
-  padding: 0; /* padding 조정 */
+  overflow-y: hidden;
+  padding: 0;
   margin-right: 12px;
-
   position: relative;
-  z-index: 2; /* 텍스트가 물/얼음보다 무조건 위에 오도록 */
+  z-index: 2;
   font-family: inherit;
 }
 
-.textarea::-webkit-scrollbar {
-  width: 6px;
-}
-.textarea::-webkit-scrollbar-thumb {
-  background-color: var(--color-polar-border);
-  border-radius: 4px;
-}
-
-.textarea::placeholder {
-  color: #94a3b8;
-}
-
-.textarea:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* 전송 버튼 셋팅 */
 .sendButton {
-  background: linear-gradient(
-    135deg,
-    var(--color-polar-accent-start, #0ea5e9) 0%,
-    var(--color-polar-accent-end, #0369a1) 100%
-  );
+  background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);
   color: white;
   border: none;
   border-radius: 50%;
@@ -166,50 +121,129 @@
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
-
-  /* 🔥 불투명도 추가 */
   opacity: 0.9;
-
-  position: relative;
-  z-index: 2; /* 전송 버튼도 물/얼음 위에 띄움 */
-}
-
-.sendButton:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
-  /* 🔥 호버 시 불투명도 증가 */
-  opacity: 1;
-}
-
-.sendButton:disabled {
-  background: var(--color-border);
-  color: var(--color-text-secondary);
-  cursor: not-allowed;
-  box-shadow: none;
-  opacity: 0.5; /* disabled 시 불투명도 조절 */
+  z-index: 2;
 }
 
 .inputFooter {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 16px;
+  padding: 0 8px;
+  position: relative;
+  min-height: 32px;
 }
 
-.footerText {
+.footerLeft {
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+}
+
+.modelSelector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background-color: var(--color-bg-secondary, #f8fafc);
+  border: 1px solid var(--color-polar-border-light, #e0f2fe);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modelDot {
+  width: 6px;
+  height: 6px;
+  background-color: #0ea5e9;
+  border-radius: 50%;
+}
+.currentModel {
   font-size: 0.75rem;
-  color: var(--color-text-secondary);
+  font-weight: 600;
+  color: #64748b;
+}
+.chevronIcon {
+  color: #94a3b8;
+  transition: transform 0.2s ease;
+}
+.active .chevronIcon {
+  transform: rotate(180deg);
+}
+
+.modelMenu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 140px;
+  background-color: #ffffff;
+  border: 1px solid #e0f2fe;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  z-index: 50;
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modelOption {
+  padding: 10px 14px;
+  font-size: 0.75rem;
+  color: #64748b;
+  cursor: pointer;
+}
+.modelOption:hover {
+  background-color: #f0f9ff;
+  color: #0ea5e9;
+}
+.modelOption.selected {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  font-weight: 700;
+}
+
+/* 🔥 반응형 중앙 정렬 텍스트 */
+.footerText {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
 }
 
 .charCount {
   font-size: 0.75rem;
-  color: var(--color-text-secondary);
+  color: #94a3b8;
   font-family: monospace;
-  font-weight: 500;
-  transition: color 0.2s ease;
+  z-index: 5;
 }
 
-.charMax {
-  color: #ef4444;
-  font-weight: 700;
+/* 🔥 모바일 반응형 처리 */
+@media (max-width: 768px) {
+  .inputContainer {
+    padding: 0 12px 1.5rem;
+  }
+  /* 모바일에서 공간이 부족하면 중앙 텍스트를 숨겨서 겹침 방지 */
+  .footerText {
+    opacity: 0;
+  }
+  .modelSelector {
+    padding: 4px 8px;
+  }
+  .currentModel {
+    font-size: 0.7rem;
+  }
 }

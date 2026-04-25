@@ -31,8 +31,13 @@ export default function ChatInput({
   onCarbonUpdate,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
+  const [modelType, setModelType] = useState("활발한 북극곰");
+  const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
   const { ready, user } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const modelMenuRef = useRef<HTMLDivElement>(null);
+
+  const models = ["할아버지 북극곰", "활발한 북극곰", "수줍은 북극곰"];
 
   const [localCarbon, setLocalCarbon] = useState<{
     totalCarbonG: number;
@@ -43,24 +48,31 @@ export default function ChatInput({
     const savedCarbon = localStorage.getItem("carbonState");
     if (savedCarbon) {
       try {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLocalCarbon(JSON.parse(savedCarbon));
       } catch (e) {
         console.error("탄소 상태 파싱 실패:", e);
       }
     }
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        modelMenuRef.current &&
+        !modelMenuRef.current.contains(e.target as Node)
+      ) {
+        setIsModelMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 1. 먼저 계산을 시도합니다.
   const calculatedMax = localCarbon
     ? Math.max(0, Math.floor(BASE_MAX_LENGTH * (1 - localCarbon.totalCarbonG)))
     : BASE_MAX_LENGTH;
 
-  // 2. 만약 결과가 NaN이면 기본값(500)을 쓰고, 아니면 계산된 값을 씁니다.
   const currentMaxLength = isNaN(calculatedMax)
     ? BASE_MAX_LENGTH
     : calculatedMax;
-
   const meltRatio = localCarbon
     ? Math.min(1, Math.max(0, localCarbon.totalCarbonG))
     : 0;
@@ -69,14 +81,9 @@ export default function ChatInput({
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       const currentScrollHeight = textareaRef.current.scrollHeight;
-
       textareaRef.current.style.height = `${Math.min(currentScrollHeight, 150)}px`;
-
-      if (currentScrollHeight >= 150) {
-        textareaRef.current.style.overflowY = "auto";
-      } else {
-        textareaRef.current.style.overflowY = "hidden";
-      }
+      textareaRef.current.style.overflowY =
+        currentScrollHeight >= 150 ? "auto" : "hidden";
     }
   };
 
@@ -86,38 +93,29 @@ export default function ChatInput({
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
-    const cursor = e.target.selectionStart;
+    const cursor = e.target.selectionStart || 0;
 
     if (val.length > currentMaxLength) return;
 
-    if (val.length > input.length) {
-      if (Math.random() < 0.2) {
-        const before = val.slice(0, cursor - 1);
-        const after = val.slice(cursor);
-        const newText = before + "🐻‍❄️" + after;
-
-        if (newText.length <= currentMaxLength) {
-          setInput(newText);
-          return;
-        }
+    if (val.length > input.length && Math.random() < 0.2) {
+      const before = val.slice(0, cursor - 1);
+      const after = val.slice(cursor);
+      const newText = before + "🐻‍❄️" + after;
+      if (newText.length <= currentMaxLength) {
+        setInput(newText);
+        return;
       }
     }
     setInput(val);
   };
 
-  // 🔥 forcedText를 인자로 받을 수 있도록 변경 (버튼 클릭 이벤트 대비 any 타입 처리)
   const handleSend = async (forcedText?: unknown) => {
-    // 인자가 문자열이면 그 값을 쓰고, 아니면 현재 input 상태값을 사용합니다.
     const textToSend = typeof forcedText === "string" ? forcedText : input;
-
     if (!textToSend.trim() || isLoading || !ready || !user) return;
 
     setInput("");
     setIsLoading(true);
-
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
 
     setMessages((prev) => [
       ...prev,
@@ -126,7 +124,6 @@ export default function ChatInput({
 
     try {
       let activeId = selectedId;
-
       if (!activeId) {
         const newConv = await api.createConversation(
           textToSend.substring(0, 15),
@@ -134,9 +131,7 @@ export default function ChatInput({
         activeId = newConv.id;
         onConversationCreated(activeId);
       }
-
       const result = await api.sendMessage(activeId, textToSend);
-
       setMessages((prev) => [
         ...prev,
         {
@@ -145,19 +140,12 @@ export default function ChatInput({
           text: result.assistantMessage.content,
         },
       ]);
-
       localStorage.setItem("carbonState", JSON.stringify(result.carbonState));
       setLocalCarbon(result.carbonState);
       onCarbonUpdate(result.carbonState);
     } catch (error) {
       console.error("전송 에러:", error);
-      if (error instanceof Error && error.message.includes("402")) {
-        alert(
-          "🚨 탄소 배출량이 1g 한계치에 도달하여 북극곰의 터전이 모두 녹았습니다. 더 이상 메시지를 보낼 수 없습니다.",
-        );
-      } else {
-        alert("메시지 전송에 실패했습니다.");
-      }
+      alert("메시지 전송에 실패했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -166,29 +154,23 @@ export default function ChatInput({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend(); // 파라미터 없이 호출하면 기본 input 값을 사용함
+      handleSend();
     }
   };
 
-  // 🔥 최신 handleSend 함수를 담아둘 ref (클로저 상태 꼬임 방지)
   const handleSendRef = useRef(handleSend);
   useEffect(() => {
     handleSendRef.current = handleSend;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleSend]);
 
-  // 🔥 ChatWindow에서 쏜 이벤트 낚아채기
   useEffect(() => {
     const handleGlobalSuggestion = (e: Event) => {
       const customEvent = e as CustomEvent<string>;
-      // 이벤트에 실려온 추천 질문 텍스트를 바로 전송
       handleSendRef.current(customEvent.detail);
     };
-
     window.addEventListener("suggestionClicked", handleGlobalSuggestion);
-    return () => {
+    return () =>
       window.removeEventListener("suggestionClicked", handleGlobalSuggestion);
-    };
   }, []);
 
   return (
@@ -206,7 +188,7 @@ export default function ChatInput({
             onKeyDown={handleKeyDown}
             placeholder={
               currentMaxLength <= 0
-                ? "탄소 배출량 1g 도달. 빙하가 모두 녹아 더 이상 입력할 수 없습니다..."
+                ? "빙하가 모두 녹았습니다..."
                 : "메시지를 입력하세요..."
             }
             disabled={isLoading || currentMaxLength <= 0}
@@ -215,7 +197,7 @@ export default function ChatInput({
           />
           <button
             className={styles.sendButton}
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={isLoading || !input.trim() || currentMaxLength <= 0}
           >
             <svg
@@ -231,10 +213,49 @@ export default function ChatInput({
             </svg>
           </button>
         </div>
+
         <div className={styles.inputFooter}>
+          <div className={styles.footerLeft} ref={modelMenuRef}>
+            <div
+              className={`${styles.modelSelector} ${isModelMenuOpen ? styles.active : ""}`}
+              onClick={() => setIsModelMenuOpen(!isModelMenuOpen)}
+            >
+              <span className={styles.modelDot}></span>
+              <span className={styles.currentModel}>{modelType}</span>
+              <svg
+                className={styles.chevronIcon}
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </div>
+            {isModelMenuOpen && (
+              <div className={styles.modelMenu}>
+                {models.map((model) => (
+                  <div
+                    key={model}
+                    className={`${styles.modelOption} ${model === modelType ? styles.selected : ""}`}
+                    onClick={() => {
+                      setModelType(model);
+                      setIsModelMenuOpen(false);
+                    }}
+                  >
+                    {model}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className={styles.footerText}>
             이 AI는 자주 많은 실수를 합니다.
           </div>
+
           <div className={styles.charCount}>
             {input.length} / {currentMaxLength}
           </div>
