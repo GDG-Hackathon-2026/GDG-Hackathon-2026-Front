@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { api, Persona } from "../../lib/api"; // Persona 인터페이스도 api에서 가져옴
+import { api, Persona } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 import styles from "./ChatInput.module.css";
 import { Message } from "../page";
@@ -39,32 +39,18 @@ export default function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
 
-  // 🔥 1. 다시 초기값을 null로 돌립니다. (서버와 첫 렌더링을 맞추기 위함)
   const [localCarbon, setLocalCarbon] = useState<{
     totalCarbonG: number;
     meltingPercent: number;
   } | null>(null);
 
-  // 🔥 2. 화면이 완전히 렌더링되었는지 확인하는 상태 추가
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    // 컴포넌트가 마운트되면 로컬스토리지를 안전하게 읽어옵니다.
-    const savedCarbon = localStorage.getItem("carbonState");
-    if (savedCarbon) {
-      try {
-        const parsed = JSON.parse(savedCarbon);
-        // 혹시 예전 데이터라 totalCarbonG가 없어도 뻗지 않도록 방어
-        if (parsed && typeof parsed.totalCarbonG !== "undefined") {
-          setLocalCarbon(parsed);
-        }
-      } catch (e) {
-        console.error("탄소 상태 파싱 실패:", e);
-      }
-    }
-    setIsMounted(true); // 이제 클라이언트 렌더링 준비 완료!
+    setIsMounted(true);
 
     const initData = async () => {
+      // 1. 페르소나 로드
       try {
         const data = await api.getPersonas();
         if (data && data.length > 0) {
@@ -74,14 +60,36 @@ export default function ChatInput({
       } catch (e) {
         console.error("페르소나 로드 실패:", e);
       }
+
+      // 2. 서버에서 내 최신 탄소 상태 로드
+      try {
+        const meData = await api.me();
+
+        // 🔥 핵심 수정: 백엔드의 'carbonUsedG'를 프론트엔드의 'totalCarbonG'로 변환
+        const mappedCarbonState = {
+          totalCarbonG: meData.carbonUsedG ?? 0,
+          stage: meData.stage ?? 0,
+          meltingPercent: meData.meltingPercent ?? 0,
+          maxInputTokens: meData.maxInputTokens ?? 8192,
+        };
+
+        setLocalCarbon(mappedCarbonState);
+        localStorage.setItem("carbonState", JSON.stringify(mappedCarbonState));
+        onCarbonUpdate(mappedCarbonState);
+      } catch (e) {
+        console.error("탄소 상태 서버 동기화 실패, 로컬스토리지 확인:", e);
+        const savedCarbon = localStorage.getItem("carbonState");
+        if (savedCarbon) {
+          setLocalCarbon(JSON.parse(savedCarbon));
+        }
+      }
     };
 
     if (ready && user) {
       initData();
     }
-  }, [ready, user]);
+  }, [ready, user, onCarbonUpdate]);
 
-  // 외부 클릭 시 메뉴 닫기
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -95,17 +103,19 @@ export default function ChatInput({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 글자수 계산 로직 (NaN 방어)
-  const calculatedMax = localCarbon
-    ? Math.max(0, Math.floor(BASE_MAX_LENGTH * (1 - localCarbon.totalCarbonG)))
-    : BASE_MAX_LENGTH;
+  const safeCarbonG =
+    localCarbon?.totalCarbonG != null ? Number(localCarbon.totalCarbonG) : 0;
+
+  const calculatedMax = Math.max(
+    0,
+    Math.floor(BASE_MAX_LENGTH * (1 - safeCarbonG)),
+  );
 
   const currentMaxLength = isNaN(calculatedMax)
     ? BASE_MAX_LENGTH
     : calculatedMax;
-  const meltRatio = localCarbon
-    ? Math.min(1, Math.max(0, localCarbon.totalCarbonG))
-    : 0;
+
+  const meltRatio = Math.min(1, Math.max(0, safeCarbonG));
 
   const adjustTextareaHeight = () => {
     if (textareaRef.current) {
@@ -160,7 +170,6 @@ export default function ChatInput({
         onConversationCreated(activeId);
       }
 
-      // API 호출 시 선택된 페르소나 키 전달
       const result = await api.sendMessage(
         activeId,
         textToSend,
@@ -209,6 +218,8 @@ export default function ChatInput({
       window.removeEventListener("suggestionClicked", handleGlobalSuggestion);
   }, []);
 
+  const isSyncing = localCarbon === null;
+
   return (
     <div
       className={styles.inputContainer}
@@ -223,18 +234,22 @@ export default function ChatInput({
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             placeholder={
-              currentMaxLength <= 0
-                ? "빙하가 모두 녹았습니다..."
-                : "메시지를 입력하세요..."
+              isSyncing
+                ? "탄소 배출량 동기화 중..."
+                : currentMaxLength <= 0
+                  ? "빙하가 모두 녹았습니다..."
+                  : "메시지를 입력하세요..."
             }
-            disabled={isLoading || currentMaxLength <= 0}
+            disabled={isLoading || isSyncing || currentMaxLength <= 0}
             maxLength={currentMaxLength}
             rows={1}
           />
           <button
             className={styles.sendButton}
             onClick={() => handleSend()}
-            disabled={isLoading || !input.trim() || currentMaxLength <= 0}
+            disabled={
+              isLoading || isSyncing || !input.trim() || currentMaxLength <= 0
+            }
           >
             <svg
               width="20"
@@ -296,7 +311,9 @@ export default function ChatInput({
             이 AI는 자주 많은 실수를 합니다.
           </div>
           <div className={styles.charCount}>
-            {input.length} / {currentMaxLength}
+            {!isMounted || isSyncing
+              ? "- / -"
+              : `${input.length} / ${currentMaxLength}`}
           </div>
         </div>
       </div>
