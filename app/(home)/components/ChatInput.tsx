@@ -60,16 +60,45 @@ export default function ChatInput({
     ? Math.min(1, Math.max(0, localCarbon.totalCarbonG))
     : 0;
 
+  // 🔥 텍스트에리어 자동 높이 조절 함수 (수정됨)
+  const adjustTextareaHeight = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto"; // 높이 초기화 후 계산
+      const currentScrollHeight = textareaRef.current.scrollHeight;
+
+      textareaRef.current.style.height = `${Math.min(currentScrollHeight, 150)}px`;
+
+      // 최대 높이(150px)를 넘겼을 때만 스크롤바 노출
+      if (currentScrollHeight >= 150) {
+        textareaRef.current.style.overflowY = "auto";
+      } else {
+        textareaRef.current.style.overflowY = "hidden";
+      }
+    }
+  };
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [input]);
+
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     const cursor = e.target.selectionStart;
+
+    // 🔥 글자 수 초과 방지: 입력값이 최대 글자 수를 넘으면 무시
+    if (val.length > currentMaxLength) return;
 
     if (val.length > input.length) {
       if (Math.random() < 0.2) {
         const before = val.slice(0, cursor - 1);
         const after = val.slice(cursor);
-        setInput(before + "🐻‍❄️" + after);
-        return;
+        const newText = before + "🐻‍❄️" + after;
+
+        // 🔥 이모지 추가 후 글자 수 초과 방지
+        if (newText.length <= currentMaxLength) {
+          setInput(newText);
+          return;
+        }
       }
     }
     setInput(val);
@@ -81,6 +110,11 @@ export default function ChatInput({
     const currentInput = input;
     setInput("");
     setIsLoading(true);
+
+    // 🔥 전송 후 높이 초기화
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
 
     setMessages((prev) => [
       ...prev,
@@ -175,7 +209,9 @@ export default function ChatInput({
           </button>
         </div>
         <div className={styles.inputFooter}>
-          <div className={styles.footerText}>이 AI는 실수를 합니다.</div>
+          <div className={styles.footerText}>
+            이 AI는 높은 확률로 많은 실수를 합니다.
+          </div>
           <div className={styles.charCount}>
             {input.length} / {currentMaxLength}
           </div>
