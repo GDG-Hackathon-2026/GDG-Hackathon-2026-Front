@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, Dispatch, SetStateAction } from "react";
+import Image from "next/image";
 import { Message } from "../page";
 import { api } from "../../lib/api";
 import styles from "./ChatWindow.module.css";
@@ -65,7 +66,12 @@ export default function ChatWindow({
             >
               {msg.sender === "gemini" && (
                 <div className={styles.profilePic}>
-                  <img src="/polar.png" alt="AI Polar Bear" />
+                  <Image
+                    src="/polar.png"
+                    alt="AI Polar Bear"
+                    width={40}
+                    height={40}
+                  />
                 </div>
               )}
               <div className={styles.messageBubble}>{msg.text}</div>
@@ -75,7 +81,7 @@ export default function ChatWindow({
         {isLoading && (
           <div className={`${styles.messageWrapper} ${styles.gemini}`}>
             <div className={styles.profilePic}>
-              <img src="/polar.png" alt="AI" />
+              <Image src="/polar.png" alt="AI" width={40} height={40} />
             </div>
             <div
               className={`${styles.messageBubble} ${styles.loadingIndicator}`}

@@ -5,7 +5,7 @@ import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
 import ChatInput from "./components/ChatInput";
 import styles from "./page.module.css";
-import { api, type MeResponse } from "../lib/api";
+import { api } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 
 export interface Message {

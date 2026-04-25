@@ -18,7 +18,7 @@ export default function ActionButtons({ content }: ActionButtonsProps) {
       setCopied(true);
       toast.success("클립보드에 복사되었습니다.");
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
+    } catch {
       toast.error("복사에 실패했습니다.");
     }
   };

@@ -4,21 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { api } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 import styles from "./ChatInput.module.css";
+import { Message } from "../page";
 
 const BASE_MAX_LENGTH = 500;
-
-export interface Message {
-  id: number;
-  sender: "user" | "gemini";
-  text: string;
-}
-
-export interface CarbonState {
-  totalCarbonG: number;
-  stage: number;
-  meltingPercent: number;
-  maxInputTokens: number;
-}
 
 interface ChatInputProps {
   selectedId: number | null;
@@ -26,7 +14,12 @@ interface ChatInputProps {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
-  onCarbonUpdate: (state: CarbonState) => void;
+  onCarbonUpdate: (state: {
+    totalCarbonG: number;
+    stage: number;
+    meltingPercent: number;
+    maxInputTokens: number;
+  }) => void;
 }
 
 export default function ChatInput({
@@ -41,14 +34,17 @@ export default function ChatInput({
   const { ready, user } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // 🔥 로컬에서 관리할 탄소 상태 추가
   const [localCarbon, setLocalCarbon] = useState<{
     meltingPercent: number;
   } | null>(null);
 
+  // 1. 초기 로드 시 로컬 스토리지에서 상태 가져오기
   useEffect(() => {
     const savedCarbon = localStorage.getItem("carbonState");
     if (savedCarbon) {
       try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLocalCarbon(JSON.parse(savedCarbon));
       } catch (e) {
         console.error("탄소 상태 파싱 실패:", e);
@@ -56,6 +52,7 @@ export default function ChatInput({
     }
   }, []);
 
+  // 2. 동적 글자수 계산 (0% = 500자, 100% = 0자)
   const currentMaxLength = localCarbon
     ? Math.max(
         0,
@@ -63,6 +60,7 @@ export default function ChatInput({
       )
     : BASE_MAX_LENGTH;
 
+  // 🐻‍❄️ 북극곰 변이 로직
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     const cursor = e.target.selectionStart;
@@ -112,6 +110,7 @@ export default function ChatInput({
         },
       ]);
 
+      // 🔥 3. 로컬 스토리지 저장 및 상태 업데이트
       localStorage.setItem("carbonState", JSON.stringify(result.carbonState));
       setLocalCarbon(result.carbonState);
       onCarbonUpdate(result.carbonState);
@@ -119,7 +118,7 @@ export default function ChatInput({
       if (result.truncated) {
         console.warn("입력 토큰 제한으로 인해 컨텍스트가 일부 잘렸습니다.");
       }
-    } catch (error: unknown) {
+    } catch (error) {
       console.error("전송 에러:", error);
       if (error instanceof Error && error.message.includes("402")) {
         alert(
@@ -150,6 +149,7 @@ export default function ChatInput({
             value={input}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
+            // 🔥 4. 동적 글자수 제한 적용 및 0자일 때 입력창 비활성화
             placeholder={
               currentMaxLength <= 0
                 ? "빙하가 모두 녹아 더 이상 입력할 수 없습니다..."
@@ -180,6 +180,7 @@ export default function ChatInput({
         <div className={styles.inputFooter}>
           <div className={styles.footerText}>AI는 실수를 할 수 있습니다.</div>
           <div className={styles.charCount}>
+            {/* 🔥 5. 변화하는 최대 글자수 UI 반영 */}
             {input.length} / {currentMaxLength}
           </div>
         </div>

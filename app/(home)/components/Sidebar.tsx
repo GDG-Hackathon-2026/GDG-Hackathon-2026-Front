@@ -13,7 +13,6 @@ interface SidebarProps {
 export default function Sidebar({ selectedId, onSelect }: SidebarProps) {
   const { ready, user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // 로그인이 안 되었거나 준비가 안 됐으면 중단
@@ -21,14 +20,11 @@ export default function Sidebar({ selectedId, onSelect }: SidebarProps) {
 
     const fetchConversations = async () => {
       try {
-        setIsLoading(true);
         // 백엔드에서 내 대화 목록 최신순으로 가져오기
         const data = await api.listConversations();
         setConversations(data);
       } catch (error) {
         console.error("대화 목록 불러오기 실패:", error);
-      } finally {
-        setIsLoading(false);
       }
     };
 
