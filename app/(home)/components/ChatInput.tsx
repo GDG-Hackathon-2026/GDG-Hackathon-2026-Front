@@ -43,6 +43,7 @@ export default function ChatInput({
     const savedCarbon = localStorage.getItem("carbonState");
     if (savedCarbon) {
       try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLocalCarbon(JSON.parse(savedCarbon));
       } catch (e) {
         console.error("탄소 상태 파싱 실패:", e);
@@ -173,6 +174,7 @@ export default function ChatInput({
   const handleSendRef = useRef(handleSend);
   useEffect(() => {
     handleSendRef.current = handleSend;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleSend]);
 
   // 🔥 ChatWindow에서 쏜 이벤트 낚아채기
