@@ -3,24 +3,28 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { api, type Conversation } from "../../lib/api";
+import { Plus, MessageSquare } from "lucide-react";
 import styles from "./Sidebar.module.css";
 
 interface SidebarProps {
   selectedId: number | null;
   onSelect: (id: number) => void;
+  onTitleChange?: (title: string) => void; // 🔥 추가됨
 }
 
-export default function Sidebar({ selectedId, onSelect }: SidebarProps) {
+export default function Sidebar({
+  selectedId,
+  onSelect,
+  onTitleChange,
+}: SidebarProps) {
   const { ready, user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
 
   useEffect(() => {
-    // 로그인이 안 되었거나 준비가 안 됐으면 중단
     if (!ready || !user) return;
 
     const fetchConversations = async () => {
       try {
-        // 백엔드에서 내 대화 목록 최신순으로 가져오기
         const data = await api.listConversations();
         setConversations(data);
       } catch (error) {
@@ -30,27 +34,41 @@ export default function Sidebar({ selectedId, onSelect }: SidebarProps) {
 
     fetchConversations();
   }, [ready, user]);
+
+  // 🔥 selectedId나 대화 목록이 바뀔 때마다 현재 제목을 찾아 부모에게 전달
+  useEffect(() => {
+    if (onTitleChange) {
+      if (!selectedId) {
+        onTitleChange("새로운 대화");
+      } else {
+        const conv = conversations.find((c) => c.id === selectedId);
+        onTitleChange(conv?.title || "새로운 대화");
+      }
+    }
+  }, [selectedId, conversations, onTitleChange]);
+
   return (
     <aside className={styles.sidebar}>
-      {/* 새로운 대화 버튼 클릭 시 selectedId를 null로 만들거나 초기화 로직 추가 가능 */}
       <button
         className={styles.newChatBtn}
         onClick={() => window.location.reload()}
       >
-        + 새로운 대화 시작
+        <Plus size={18} />
+        <span>새로운 대화</span>
       </button>
 
       <div className={styles.listContainer}>
         <h3 className={styles.listTitle}>최근 대화</h3>
-        {/* ... 로딩/비어있음 처리 ... */}
         <ul className={styles.chatList}>
           {conversations.map((conv) => (
             <li
               key={conv.id}
-              className={`${styles.chatItem} ${selectedId === conv.id ? styles.active : ""}`}
-              onClick={() => onSelect(conv.id)} // 🔥 클릭 시 ID 전달
+              className={`${styles.chatItem} ${
+                selectedId === conv.id ? styles.active : ""
+              }`}
+              onClick={() => onSelect(conv.id)}
             >
-              <span className={styles.chatIcon}>💬</span>
+              <MessageSquare size={16} className={styles.chatIcon} />
               <span className={styles.chatTitle}>
                 {conv.title || "새로운 대화"}
               </span>
