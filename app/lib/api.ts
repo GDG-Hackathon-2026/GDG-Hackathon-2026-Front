@@ -36,10 +36,18 @@ export const api = {
   listConversations: (): Promise<Conversation[]> =>
     fetchWithAuth("/api/conversations"),
 
-  sendMessage: (id: number, content: string): Promise<SendResult> =>
+  // 🔥 페르소나 목록 조회
+  getPersonas: (): Promise<Persona[]> => fetchWithAuth("/api/personas"),
+
+  // 🔥 sendMessage 수정: persona 파라미터 추가
+  sendMessage: (
+    id: number,
+    content: string,
+    persona: string,
+  ): Promise<SendResult> =>
     fetchWithAuth(`/api/conversations/${id}/messages`, {
       method: "POST",
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, persona }),
     }),
 
   getConversation: (id: number): Promise<ConversationView> =>
@@ -111,4 +119,11 @@ export interface GlobalStatsResponse {
     carKm: number;
     phoneCharges: number;
   };
+}
+
+// 🔥 페르소나 인터페이스 추가
+export interface Persona {
+  key: string;
+  displayName: string;
+  description: string;
 }

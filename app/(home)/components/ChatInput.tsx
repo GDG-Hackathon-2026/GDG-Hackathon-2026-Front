@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { api } from "../../lib/api";
+import { api, Persona } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 import styles from "./ChatInput.module.css";
 import { Message } from "../page";
@@ -31,52 +31,99 @@ export default function ChatInput({
   onCarbonUpdate,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
+  const [personas, setPersonas] = useState<Persona[]>([]);
+  const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
+  const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
+
   const { ready, user } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const modelMenuRef = useRef<HTMLDivElement>(null);
 
   const [localCarbon, setLocalCarbon] = useState<{
     totalCarbonG: number;
     meltingPercent: number;
   } | null>(null);
 
+  const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
-    const savedCarbon = localStorage.getItem("carbonState");
-    if (savedCarbon) {
+    setIsMounted(true);
+
+    const initData = async () => {
+      // 1. 페르소나 로드
       try {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setLocalCarbon(JSON.parse(savedCarbon));
+        const data = await api.getPersonas();
+        if (data && data.length > 0) {
+          setPersonas(data);
+          setSelectedPersona(data[0]);
+        }
       } catch (e) {
-        console.error("탄소 상태 파싱 실패:", e);
+        console.error("페르소나 로드 실패:", e);
       }
+
+      // 2. 서버에서 내 최신 탄소 상태 로드
+      try {
+        const meData = await api.me();
+
+        // 🔥 핵심 수정: 백엔드의 'carbonUsedG'를 프론트엔드의 'totalCarbonG'로 변환
+        const mappedCarbonState = {
+          totalCarbonG: meData.carbonUsedG ?? 0,
+          stage: meData.stage ?? 0,
+          meltingPercent: meData.meltingPercent ?? 0,
+          maxInputTokens: meData.maxInputTokens ?? 8192,
+        };
+
+        setLocalCarbon(mappedCarbonState);
+        localStorage.setItem("carbonState", JSON.stringify(mappedCarbonState));
+        onCarbonUpdate(mappedCarbonState);
+      } catch (e) {
+        console.error("탄소 상태 서버 동기화 실패, 로컬스토리지 확인:", e);
+        const savedCarbon = localStorage.getItem("carbonState");
+        if (savedCarbon) {
+          setLocalCarbon(JSON.parse(savedCarbon));
+        }
+      }
+    };
+
+    if (ready && user) {
+      initData();
     }
+  }, [ready, user, onCarbonUpdate]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        modelMenuRef.current &&
+        !modelMenuRef.current.contains(e.target as Node)
+      ) {
+        setIsModelMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 1. 먼저 계산을 시도합니다.
-  const calculatedMax = localCarbon
-    ? Math.max(0, Math.floor(BASE_MAX_LENGTH * (1 - localCarbon.totalCarbonG)))
-    : BASE_MAX_LENGTH;
+  const safeCarbonG =
+    localCarbon?.totalCarbonG != null ? Number(localCarbon.totalCarbonG) : 0;
 
-  // 2. 만약 결과가 NaN이면 기본값(500)을 쓰고, 아니면 계산된 값을 씁니다.
+  const calculatedMax = Math.max(
+    0,
+    Math.floor(BASE_MAX_LENGTH * (1 - safeCarbonG)),
+  );
+
   const currentMaxLength = isNaN(calculatedMax)
     ? BASE_MAX_LENGTH
     : calculatedMax;
 
-  const meltRatio = localCarbon
-    ? Math.min(1, Math.max(0, localCarbon.totalCarbonG))
-    : 0;
+  const meltRatio = Math.min(1, Math.max(0, safeCarbonG));
 
   const adjustTextareaHeight = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       const currentScrollHeight = textareaRef.current.scrollHeight;
-
       textareaRef.current.style.height = `${Math.min(currentScrollHeight, 150)}px`;
-
-      if (currentScrollHeight >= 150) {
-        textareaRef.current.style.overflowY = "auto";
-      } else {
-        textareaRef.current.style.overflowY = "hidden";
-      }
+      textareaRef.current.style.overflowY =
+        currentScrollHeight >= 150 ? "auto" : "hidden";
     }
   };
 
@@ -86,38 +133,27 @@ export default function ChatInput({
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
-    const cursor = e.target.selectionStart;
-
+    const cursor = e.target.selectionStart || 0;
     if (val.length > currentMaxLength) return;
-
-    if (val.length > input.length) {
-      if (Math.random() < 0.2) {
-        const before = val.slice(0, cursor - 1);
-        const after = val.slice(cursor);
-        const newText = before + "🐻‍❄️" + after;
-
-        if (newText.length <= currentMaxLength) {
-          setInput(newText);
-          return;
-        }
+    if (val.length > input.length && Math.random() < 0.2) {
+      const before = val.slice(0, cursor - 1);
+      const after = val.slice(cursor);
+      const newText = before + "🐻‍❄️" + after;
+      if (newText.length <= currentMaxLength) {
+        setInput(newText);
+        return;
       }
     }
     setInput(val);
   };
 
-  // 🔥 forcedText를 인자로 받을 수 있도록 변경 (버튼 클릭 이벤트 대비 any 타입 처리)
   const handleSend = async (forcedText?: unknown) => {
-    // 인자가 문자열이면 그 값을 쓰고, 아니면 현재 input 상태값을 사용합니다.
     const textToSend = typeof forcedText === "string" ? forcedText : input;
-
     if (!textToSend.trim() || isLoading || !ready || !user) return;
 
     setInput("");
     setIsLoading(true);
-
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
 
     setMessages((prev) => [
       ...prev,
@@ -126,7 +162,6 @@ export default function ChatInput({
 
     try {
       let activeId = selectedId;
-
       if (!activeId) {
         const newConv = await api.createConversation(
           textToSend.substring(0, 15),
@@ -135,7 +170,11 @@ export default function ChatInput({
         onConversationCreated(activeId);
       }
 
-      const result = await api.sendMessage(activeId, textToSend);
+      const result = await api.sendMessage(
+        activeId,
+        textToSend,
+        selectedPersona?.key || "POLAR_BEAR_GRANDPA",
+      );
 
       setMessages((prev) => [
         ...prev,
@@ -151,13 +190,7 @@ export default function ChatInput({
       onCarbonUpdate(result.carbonState);
     } catch (error) {
       console.error("전송 에러:", error);
-      if (error instanceof Error && error.message.includes("402")) {
-        alert(
-          "🚨 탄소 배출량이 1g 한계치에 도달하여 북극곰의 터전이 모두 녹았습니다. 더 이상 메시지를 보낼 수 없습니다.",
-        );
-      } else {
-        alert("메시지 전송에 실패했습니다.");
-      }
+      alert("메시지 전송에 실패했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -166,30 +199,26 @@ export default function ChatInput({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend(); // 파라미터 없이 호출하면 기본 input 값을 사용함
+      handleSend();
     }
   };
 
-  // 🔥 최신 handleSend 함수를 담아둘 ref (클로저 상태 꼬임 방지)
   const handleSendRef = useRef(handleSend);
   useEffect(() => {
     handleSendRef.current = handleSend;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleSend]);
 
-  // 🔥 ChatWindow에서 쏜 이벤트 낚아채기
   useEffect(() => {
     const handleGlobalSuggestion = (e: Event) => {
       const customEvent = e as CustomEvent<string>;
-      // 이벤트에 실려온 추천 질문 텍스트를 바로 전송
       handleSendRef.current(customEvent.detail);
     };
-
     window.addEventListener("suggestionClicked", handleGlobalSuggestion);
-    return () => {
+    return () =>
       window.removeEventListener("suggestionClicked", handleGlobalSuggestion);
-    };
   }, []);
+
+  const isSyncing = localCarbon === null;
 
   return (
     <div
@@ -205,18 +234,22 @@ export default function ChatInput({
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             placeholder={
-              currentMaxLength <= 0
-                ? "탄소 배출량 1g 도달. 빙하가 모두 녹아 더 이상 입력할 수 없습니다..."
-                : "메시지를 입력하세요..."
+              isSyncing
+                ? "탄소 배출량 동기화 중..."
+                : currentMaxLength <= 0
+                  ? "빙하가 모두 녹았습니다..."
+                  : "메시지를 입력하세요..."
             }
-            disabled={isLoading || currentMaxLength <= 0}
+            disabled={isLoading || isSyncing || currentMaxLength <= 0}
             maxLength={currentMaxLength}
             rows={1}
           />
           <button
             className={styles.sendButton}
-            onClick={handleSend}
-            disabled={isLoading || !input.trim() || currentMaxLength <= 0}
+            onClick={() => handleSend()}
+            disabled={
+              isLoading || isSyncing || !input.trim() || currentMaxLength <= 0
+            }
           >
             <svg
               width="20"
@@ -231,12 +264,56 @@ export default function ChatInput({
             </svg>
           </button>
         </div>
+
         <div className={styles.inputFooter}>
+          <div className={styles.footerLeft} ref={modelMenuRef}>
+            <div
+              className={`${styles.modelSelector} ${isModelMenuOpen ? styles.active : ""}`}
+              onClick={() => setIsModelMenuOpen(!isModelMenuOpen)}
+            >
+              <span className={styles.modelDot}></span>
+              <span className={styles.currentModel}>
+                {selectedPersona
+                  ? selectedPersona.displayName
+                  : "불러오는 중..."}
+              </span>
+              <svg
+                className={styles.chevronIcon}
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </div>
+            {isModelMenuOpen && (
+              <div className={styles.modelMenu}>
+                {personas.map((p) => (
+                  <div
+                    key={p.key}
+                    className={`${styles.modelOption} ${p.key === selectedPersona?.key ? styles.selected : ""}`}
+                    title={p.description}
+                    onClick={() => {
+                      setSelectedPersona(p);
+                      setIsModelMenuOpen(false);
+                    }}
+                  >
+                    {p.displayName}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <div className={styles.footerText}>
             이 AI는 자주 많은 실수를 합니다.
           </div>
           <div className={styles.charCount}>
-            {input.length} / {currentMaxLength}
+            {!isMounted || isSyncing
+              ? "- / -"
+              : `${input.length} / ${currentMaxLength}`}
           </div>
         </div>
       </div>

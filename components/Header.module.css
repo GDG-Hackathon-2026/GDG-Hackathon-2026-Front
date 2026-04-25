@@ -1,19 +1,19 @@
 .header {
   position: sticky;
   top: 0;
-  height: var(--header-height);
-  background-color: var(--color-bg-glass);
+  height: 64px; /* 표준 헤더 높이 */
+  background-color: rgba(255, 255, 255, 0.8); /* 반투명 화이트 */
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--color-polar-border-light);
-  z-index: 50;
+  border-bottom: 1px solid rgba(224, 242, 254, 1); /* 연한 하늘색 경계선 */
+  z-index: 100;
   display: flex;
   align-items: center;
-  box-shadow: 0 4px 20px var(--color-shadow-glass);
+  transition: all 0.3s ease;
 }
 
 .headerNav {
-  max-width: var(--layout-max-width);
+  max-width: 1200px;
   width: 100%;
   margin: 0 auto;
   padding: 0 24px;
@@ -25,49 +25,81 @@
 .logoContainer {
   display: flex;
   align-items: center;
-  gap: 10px; /* 로고와 텍스트 사이 간격 */
+  gap: 12px;
   text-decoration: none;
-  transition: transform 0.2s ease;
+  group: hover;
 }
 
-.logoContainer:hover {
-  transform: translateY(-1px);
+/* 로고 아이콘 배경 원 */
+.iconCircle {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.svgLogo {
-  filter: drop-shadow(0 2px 4px rgba(2, 132, 199, 0.15));
+.logoContainer:hover .iconCircle {
+  transform: rotate(15deg) scale(1.1);
+}
+
+.snowflakeIcon {
+  color: white;
 }
 
 .logoText {
-  font-weight: 900;
-  font-size: 24px;
-  letter-spacing: -0.5px;
-  background: linear-gradient(
-    135deg,
-    var(--color-polar-accent-start) 0%,
-    var(--color-polar-accent-end) 100%
-  );
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.8px;
+  color: #0f172a;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .navLinks {
   display: flex;
-  gap: 24px;
+  gap: 8px;
   align-items: center;
 }
 
 .navLink {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--color-polar-link);
+  color: #64748b; /* 차분한 그레이 */
   text-decoration: none;
   transition: all 0.2s ease;
   padding: 8px 16px;
-  border-radius: 20px;
+  border-radius: 10px;
 }
 
 .navLink:hover {
-  color: var(--color-polar-link-hover);
-  background-color: var(--color-polar-bg);
+  color: #0ea5e9;
+  background-color: #f0f9ff;
+}
+
+/* 🔥 현재 위치한 페이지 표시 */
+.navLink.active {
+  color: #0ea5e9;
+  background-color: #e0f2fe;
+}
+
+/* 모바일 대응: 패딩 축소 */
+@media (max-width: 768px) {
+  .headerNav {
+    padding: 0 16px;
+  }
+
+  .logoText {
+    font-size: 18px;
+  }
+
+  .navLink {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
 }

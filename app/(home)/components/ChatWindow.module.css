@@ -1,7 +1,7 @@
 .windowContainer {
   flex: 1;
   overflow-y: auto;
-  padding: 2rem 24px; /* 좌우 패딩 추가 */
+  padding: 1rem 0px; /* 좌우 패딩 추가 */
   display: flex;
   flex-direction: column;
 }
@@ -15,6 +15,7 @@
   max-width: 800px;
   margin: 0 auto; /* 중앙 정렬 */
   padding-bottom: 2rem;
+  padding: 0 24px;
 }
 
 /* 🔥 첫 화면 (Empty State) 스타일링 */
@@ -65,6 +66,9 @@
 @media (max-width: 600px) {
   .suggestionGrid {
     grid-template-columns: 1fr; /* 모바일에서는 1줄로 */
+  }
+  .messageList {
+    padding: 0px;
   }
 }
 
