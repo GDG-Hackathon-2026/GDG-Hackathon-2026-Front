@@ -16,7 +16,7 @@ export interface Message {
 
 export default function HomePage() {
   const { ready, user } = useAuth();
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [sidebarKey, setSidebarKey] = useState(0);
