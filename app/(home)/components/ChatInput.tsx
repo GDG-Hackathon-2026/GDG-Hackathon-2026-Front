@@ -179,7 +179,7 @@ export default function ChatInput({
           </button>
         </div>
         <div className={styles.inputFooter}>
-          <div className={styles.footerText}>AI는 실수를 할 수 있습니다.</div>
+          <div className={styles.footerText}>이 AI는 실수를 많이 합니다.</div>
           <div className={styles.charCount}>
             {/* 🔥 5. 변화하는 최대 글자수 UI 반영 */}
             {input.length} / {currentMaxLength}
