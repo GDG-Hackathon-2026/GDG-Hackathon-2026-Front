@@ -51,8 +51,8 @@ export default function Header() {
           <Link href="/" className={styles.navLink}>
             Home
           </Link>
-          <Link href="/project" className={styles.navLink}>
-            Project
+          <Link href="/impact" className={styles.navLink}>
+            Impact
           </Link>
         </div>
       </nav>

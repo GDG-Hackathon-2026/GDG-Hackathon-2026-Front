@@ -77,7 +77,7 @@ export default function HomePage() {
           setMessages={setMessages}
           isLoading={isLoading}
           setIsLoading={setIsLoading}
-          onCarbonUpdate={setCarbonState} // 🔥 탄소 상태 업데이트 연결
+          onCarbonUpdate={setCarbonState}
         />
       </main>
     </div>
