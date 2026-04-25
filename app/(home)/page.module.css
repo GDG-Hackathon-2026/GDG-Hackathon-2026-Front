@@ -1,18 +1,116 @@
 .container {
   display: flex;
-  flex-direction: row; /* 🔥 가로 배치로 변경 */
+  flex-direction: row;
   height: calc(100vh - var(--header-height));
   background-color: var(--color-bg-primary);
   overflow: hidden;
+  position: relative;
+}
+
+.mobileHeader {
+  display: none;
+}
+
+.sidebarWrapper {
+  display: block;
+  flex-shrink: 0;
+  height: 100%;
+  z-index: 40;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  /* max-width: 800px; 대신 중앙 정렬을 위해 아래처럼 바꿀 수 있어 */
   margin: 0 auto;
   position: relative;
   overflow: hidden;
-  max-width: 900px; /* 채팅 영역 최대 너비 */
+  width: 100%;
+  max-width: 900px;
+}
+
+.overlay {
+  display: none;
+}
+
+/* 📱 768px 이하 모바일/태블릿 반응형 */
+@media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+  }
+
+  .mobileHeader {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-bg-primary);
+    z-index: 30;
+  }
+
+  .menuButton {
+    background: none;
+    border: none;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    margin-right: 12px;
+  }
+
+  .mobileTitle {
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: -0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* 제목이 너무 길면 ... 처리 */
+  }
+
+  .sidebarWrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    transform: translateX(-100%);
+    background-color: var(--color-bg-secondary);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.1);
+    z-index: 100; /* 🔥 글로벌 헤더(50)를 덮기 위해 100으로 상향 */
+  }
+
+  .sidebarWrapper.open {
+    transform: translateX(0);
+  }
+
+  .main {
+    max-width: 100%;
+    margin: 0;
+    height: calc(100vh - var(--header-height) - 53px);
+  }
+
+  .overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 90; /* 🔥 사이드바 바로 아래, 헤더 위에 위치 */
+    backdrop-filter: blur(2px);
+    animation: fadeIn 0.3s ease;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
