@@ -1,0 +1,16 @@
+services:
+  web:
+    image: ${DOCKERHUB_USERNAME}/gdg-2026-frontend:latest
+    container_name: gdg-web
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      NODE_ENV: production
+    networks:
+      - shared
+
+networks:
+  shared:
+    name: shared
+    external: true
