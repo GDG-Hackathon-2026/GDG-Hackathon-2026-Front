@@ -4,17 +4,22 @@ import { useState, useRef, useEffect } from "react";
 import { api } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 import styles from "./ChatInput.module.css";
+import { Message } from "../page";
 
-const MAX_LENGTH = 500;
+const BASE_MAX_LENGTH = 500;
 
 interface ChatInputProps {
   selectedId: number | null;
   onConversationCreated: (id: number) => void;
-  setMessages: any;
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
-  // 🔥 탄소 상태 업데이트를 위한 함수 추가
-  onCarbonUpdate: (state: any) => void;
+  onCarbonUpdate: (state: {
+    totalCarbonG: number;
+    stage: number;
+    meltingPercent: number;
+    maxInputTokens: number;
+  }) => void;
 }
 
 export default function ChatInput({
@@ -29,6 +34,48 @@ export default function ChatInput({
   const { ready, user } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // 🔥 로컬에서 관리할 탄소 상태 추가
+  const [localCarbon, setLocalCarbon] = useState<{
+    meltingPercent: number;
+  } | null>(null);
+
+  // 1. 초기 로드 시 로컬 스토리지에서 상태 가져오기
+  useEffect(() => {
+    const savedCarbon = localStorage.getItem("carbonState");
+    if (savedCarbon) {
+      try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setLocalCarbon(JSON.parse(savedCarbon));
+      } catch (e) {
+        console.error("탄소 상태 파싱 실패:", e);
+      }
+    }
+  }, []);
+
+  // 2. 동적 글자수 계산 (0% = 500자, 100% = 0자)
+  const currentMaxLength = localCarbon
+    ? Math.max(
+        0,
+        Math.floor(BASE_MAX_LENGTH * (1 - localCarbon.meltingPercent / 100)),
+      )
+    : BASE_MAX_LENGTH;
+
+  // 🐻‍❄️ 북극곰 변이 로직
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    const cursor = e.target.selectionStart;
+
+    if (val.length > input.length) {
+      if (Math.random() < 0.2) {
+        const before = val.slice(0, cursor - 1);
+        const after = val.slice(cursor);
+        setInput(before + "🐻‍❄️" + after);
+        return;
+      }
+    }
+    setInput(val);
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading || !ready || !user) return;
 
@@ -36,8 +83,7 @@ export default function ChatInput({
     setInput("");
     setIsLoading(true);
 
-    // 1. 유저 메시지 즉시 렌더링
-    setMessages((prev: any) => [
+    setMessages((prev) => [
       ...prev,
       { id: Date.now(), sender: "user", text: currentInput },
     ]);
@@ -45,7 +91,6 @@ export default function ChatInput({
     try {
       let activeId = selectedId;
 
-      // 2. 방이 없다면 생성부터 (POST /api/conversations)
       if (!activeId) {
         const newConv = await api.createConversation(
           currentInput.substring(0, 15),
@@ -54,11 +99,9 @@ export default function ChatInput({
         onConversationCreated(activeId);
       }
 
-      // 3. 메시지 전송 및 Gemini 호출 (POST /api/conversations/{id}/messages)
       const result = await api.sendMessage(activeId, currentInput);
 
-      // 4. AI 답변 렌더링
-      setMessages((prev: any) => [
+      setMessages((prev) => [
         ...prev,
         {
           id: result.assistantMessage.id,
@@ -67,15 +110,17 @@ export default function ChatInput({
         },
       ]);
 
-      // 5. 🧊 중요: 탄소 상태 업데이트 (UI 녹아내림 강도 조절용)
+      // 🔥 3. 로컬 스토리지 저장 및 상태 업데이트
+      localStorage.setItem("carbonState", JSON.stringify(result.carbonState));
+      setLocalCarbon(result.carbonState);
       onCarbonUpdate(result.carbonState);
 
       if (result.truncated) {
         console.warn("입력 토큰 제한으로 인해 컨텍스트가 일부 잘렸습니다.");
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("전송 에러:", error);
-      if (error.message.includes("402")) {
+      if (error instanceof Error && error.message.includes("402")) {
         alert(
           "🚨 탄소 배출량이 한계치에 도달하여 북극곰의 터전이 모두 녹았습니다. 더 이상 메시지를 보낼 수 없습니다.",
         );
@@ -102,17 +147,22 @@ export default function ChatInput({
             ref={textareaRef}
             className={styles.textarea}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={handleChange}
             onKeyDown={handleKeyDown}
-            placeholder="메시지를 입력하세요..."
-            disabled={isLoading}
-            maxLength={MAX_LENGTH}
+            // 🔥 4. 동적 글자수 제한 적용 및 0자일 때 입력창 비활성화
+            placeholder={
+              currentMaxLength <= 0
+                ? "빙하가 모두 녹아 더 이상 입력할 수 없습니다..."
+                : "메시지를 입력하세요..."
+            }
+            disabled={isLoading || currentMaxLength <= 0}
+            maxLength={currentMaxLength}
             rows={1}
           />
           <button
             className={styles.sendButton}
             onClick={handleSend}
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || !input.trim() || currentMaxLength <= 0}
           >
             <svg
               width="20"
@@ -130,7 +180,8 @@ export default function ChatInput({
         <div className={styles.inputFooter}>
           <div className={styles.footerText}>AI는 실수를 할 수 있습니다.</div>
           <div className={styles.charCount}>
-            {input.length} / {MAX_LENGTH}
+            {/* 🔥 5. 변화하는 최대 글자수 UI 반영 */}
+            {input.length} / {currentMaxLength}
           </div>
         </div>
       </div>
