@@ -151,6 +151,10 @@
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
+
+  /* 🔥 선택기 자체가 너무 커지지 않도록 너비 제한 (필요시 조절) */
+  max-width: 160px;
+  min-width: 0;
 }
 
 .modelDot {
@@ -163,6 +167,12 @@
   font-size: 0.75rem;
   font-weight: 600;
   color: #64748b;
+
+  /* 🔥 줄바꿈 방지 및 말줄임 처리 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1; /* 남은 공간을 채우며 줄어들게 함 */
 }
 .chevronIcon {
   color: #94a3b8;
@@ -176,13 +186,29 @@
   position: absolute;
   bottom: calc(100% + 8px);
   left: 0;
-  width: 140px;
+  /* 🔥 메뉴 너비를 내용에 맞게 유연하게 하거나 고정 */
+  width: max-content;
+  min-width: 140px;
+  max-width: 200px; /* 너무 길어지면 안되니까 마지노선 설정 */
   background-color: #ffffff;
   border: 1px solid #e0f2fe;
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   z-index: 50;
   animation: slideUp 0.2s ease-out;
+  overflow: hidden;
+}
+
+.modelOption {
+  padding: 10px 14px;
+  font-size: 0.75rem;
+  color: #64748b;
+  cursor: pointer;
+
+  /* 🔥 메뉴 안의 텍스트도 줄바꿈 방지 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @keyframes slideUp {
@@ -196,12 +222,6 @@
   }
 }
 
-.modelOption {
-  padding: 10px 14px;
-  font-size: 0.75rem;
-  color: #64748b;
-  cursor: pointer;
-}
 .modelOption:hover {
   background-color: #f0f9ff;
   color: #0ea5e9;

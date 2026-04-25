@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { api } from "../../lib/api";
+import { api, Persona } from "../../lib/api"; // Persona 인터페이스도 api에서 가져옴
 import { useAuth } from "../../context/AuthContext";
 import styles from "./ChatInput.module.css";
 import { Message } from "../page";
@@ -31,29 +31,58 @@ export default function ChatInput({
   onCarbonUpdate,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
-  const [modelType, setModelType] = useState("활발한 북극곰");
+  const [personas, setPersonas] = useState<Persona[]>([]);
+  const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
+
   const { ready, user } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
 
-  const models = ["할아버지 북극곰", "활발한 북극곰", "수줍은 북극곰"];
-
+  // 🔥 1. 다시 초기값을 null로 돌립니다. (서버와 첫 렌더링을 맞추기 위함)
   const [localCarbon, setLocalCarbon] = useState<{
     totalCarbonG: number;
     meltingPercent: number;
   } | null>(null);
 
+  // 🔥 2. 화면이 완전히 렌더링되었는지 확인하는 상태 추가
+  const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
+    // 컴포넌트가 마운트되면 로컬스토리지를 안전하게 읽어옵니다.
     const savedCarbon = localStorage.getItem("carbonState");
     if (savedCarbon) {
       try {
-        setLocalCarbon(JSON.parse(savedCarbon));
+        const parsed = JSON.parse(savedCarbon);
+        // 혹시 예전 데이터라 totalCarbonG가 없어도 뻗지 않도록 방어
+        if (parsed && typeof parsed.totalCarbonG !== "undefined") {
+          setLocalCarbon(parsed);
+        }
       } catch (e) {
         console.error("탄소 상태 파싱 실패:", e);
       }
     }
+    setIsMounted(true); // 이제 클라이언트 렌더링 준비 완료!
 
+    const initData = async () => {
+      try {
+        const data = await api.getPersonas();
+        if (data && data.length > 0) {
+          setPersonas(data);
+          setSelectedPersona(data[0]);
+        }
+      } catch (e) {
+        console.error("페르소나 로드 실패:", e);
+      }
+    };
+
+    if (ready && user) {
+      initData();
+    }
+  }, [ready, user]);
+
+  // 외부 클릭 시 메뉴 닫기
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
         modelMenuRef.current &&
@@ -66,6 +95,7 @@ export default function ChatInput({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // 글자수 계산 로직 (NaN 방어)
   const calculatedMax = localCarbon
     ? Math.max(0, Math.floor(BASE_MAX_LENGTH * (1 - localCarbon.totalCarbonG)))
     : BASE_MAX_LENGTH;
@@ -94,9 +124,7 @@ export default function ChatInput({
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     const cursor = e.target.selectionStart || 0;
-
     if (val.length > currentMaxLength) return;
-
     if (val.length > input.length && Math.random() < 0.2) {
       const before = val.slice(0, cursor - 1);
       const after = val.slice(cursor);
@@ -131,7 +159,14 @@ export default function ChatInput({
         activeId = newConv.id;
         onConversationCreated(activeId);
       }
-      const result = await api.sendMessage(activeId, textToSend);
+
+      // API 호출 시 선택된 페르소나 키 전달
+      const result = await api.sendMessage(
+        activeId,
+        textToSend,
+        selectedPersona?.key || "POLAR_BEAR_GRANDPA",
+      );
+
       setMessages((prev) => [
         ...prev,
         {
@@ -140,6 +175,7 @@ export default function ChatInput({
           text: result.assistantMessage.content,
         },
       ]);
+
       localStorage.setItem("carbonState", JSON.stringify(result.carbonState));
       setLocalCarbon(result.carbonState);
       onCarbonUpdate(result.carbonState);
@@ -221,7 +257,11 @@ export default function ChatInput({
               onClick={() => setIsModelMenuOpen(!isModelMenuOpen)}
             >
               <span className={styles.modelDot}></span>
-              <span className={styles.currentModel}>{modelType}</span>
+              <span className={styles.currentModel}>
+                {selectedPersona
+                  ? selectedPersona.displayName
+                  : "불러오는 중..."}
+              </span>
               <svg
                 className={styles.chevronIcon}
                 width="12"
@@ -236,26 +276,25 @@ export default function ChatInput({
             </div>
             {isModelMenuOpen && (
               <div className={styles.modelMenu}>
-                {models.map((model) => (
+                {personas.map((p) => (
                   <div
-                    key={model}
-                    className={`${styles.modelOption} ${model === modelType ? styles.selected : ""}`}
+                    key={p.key}
+                    className={`${styles.modelOption} ${p.key === selectedPersona?.key ? styles.selected : ""}`}
+                    title={p.description}
                     onClick={() => {
-                      setModelType(model);
+                      setSelectedPersona(p);
                       setIsModelMenuOpen(false);
                     }}
                   >
-                    {model}
+                    {p.displayName}
                   </div>
                 ))}
               </div>
             )}
           </div>
-
           <div className={styles.footerText}>
             이 AI는 자주 많은 실수를 합니다.
           </div>
-
           <div className={styles.charCount}>
             {input.length} / {currentMaxLength}
           </div>
