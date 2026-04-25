@@ -43,7 +43,6 @@ export default function ChatInput({
     const savedCarbon = localStorage.getItem("carbonState");
     if (savedCarbon) {
       try {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLocalCarbon(JSON.parse(savedCarbon));
       } catch (e) {
         console.error("탄소 상태 파싱 실패:", e);
@@ -55,20 +54,17 @@ export default function ChatInput({
     ? Math.max(0, Math.floor(BASE_MAX_LENGTH * (1 - localCarbon.totalCarbonG)))
     : BASE_MAX_LENGTH;
 
-  // 🔥 핵심: 0g이면 0, 1g이면 1이 되는 비율값 계산
   const meltRatio = localCarbon
     ? Math.min(1, Math.max(0, localCarbon.totalCarbonG))
     : 0;
 
-  // 🔥 텍스트에리어 자동 높이 조절 함수 (수정됨)
   const adjustTextareaHeight = () => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = "auto"; // 높이 초기화 후 계산
+      textareaRef.current.style.height = "auto";
       const currentScrollHeight = textareaRef.current.scrollHeight;
 
       textareaRef.current.style.height = `${Math.min(currentScrollHeight, 150)}px`;
 
-      // 최대 높이(150px)를 넘겼을 때만 스크롤바 노출
       if (currentScrollHeight >= 150) {
         textareaRef.current.style.overflowY = "auto";
       } else {
@@ -85,7 +81,6 @@ export default function ChatInput({
     const val = e.target.value;
     const cursor = e.target.selectionStart;
 
-    // 🔥 글자 수 초과 방지: 입력값이 최대 글자 수를 넘으면 무시
     if (val.length > currentMaxLength) return;
 
     if (val.length > input.length) {
@@ -94,7 +89,6 @@ export default function ChatInput({
         const after = val.slice(cursor);
         const newText = before + "🐻‍❄️" + after;
 
-        // 🔥 이모지 추가 후 글자 수 초과 방지
         if (newText.length <= currentMaxLength) {
           setInput(newText);
           return;
@@ -104,21 +98,23 @@ export default function ChatInput({
     setInput(val);
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading || !ready || !user) return;
+  // 🔥 forcedText를 인자로 받을 수 있도록 변경 (버튼 클릭 이벤트 대비 any 타입 처리)
+  const handleSend = async (forcedText?: string | any) => {
+    // 문자열이 강제로 넘어왔으면 그걸 쓰고, 아니면 input 상태 사용
+    const textToSend = typeof forcedText === "string" ? forcedText : input;
 
-    const currentInput = input;
+    if (!textToSend.trim() || isLoading || !ready || !user) return;
+
     setInput("");
     setIsLoading(true);
 
-    // 🔥 전송 후 높이 초기화
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
 
     setMessages((prev) => [
       ...prev,
-      { id: Date.now(), sender: "user", text: currentInput },
+      { id: Date.now(), sender: "user", text: textToSend },
     ]);
 
     try {
@@ -126,13 +122,13 @@ export default function ChatInput({
 
       if (!activeId) {
         const newConv = await api.createConversation(
-          currentInput.substring(0, 15),
+          textToSend.substring(0, 15),
         );
         activeId = newConv.id;
         onConversationCreated(activeId);
       }
 
-      const result = await api.sendMessage(activeId, currentInput);
+      const result = await api.sendMessage(activeId, textToSend);
 
       setMessages((prev) => [
         ...prev,
@@ -163,12 +159,31 @@ export default function ChatInput({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      handleSend(); // 파라미터 없이 호출하면 기본 input 값을 사용함
     }
   };
 
+  // 🔥 최신 handleSend 함수를 담아둘 ref (클로저 상태 꼬임 방지)
+  const handleSendRef = useRef(handleSend);
+  useEffect(() => {
+    handleSendRef.current = handleSend;
+  }, [handleSend]);
+
+  // 🔥 ChatWindow에서 쏜 이벤트 낚아채기
+  useEffect(() => {
+    const handleGlobalSuggestion = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      // 이벤트에 실려온 추천 질문 텍스트를 바로 전송
+      handleSendRef.current(customEvent.detail);
+    };
+
+    window.addEventListener("suggestionClicked", handleGlobalSuggestion);
+    return () => {
+      window.removeEventListener("suggestionClicked", handleGlobalSuggestion);
+    };
+  }, []);
+
   return (
-    // 🔥 style로 melt-ratio 값을 CSS에 전달
     <div
       className={styles.inputContainer}
       style={{ "--melt-ratio": meltRatio } as React.CSSProperties}
@@ -210,7 +225,7 @@ export default function ChatInput({
         </div>
         <div className={styles.inputFooter}>
           <div className={styles.footerText}>
-            이 AI는 높은 확률로 많은 실수를 합니다.
+            이 AI는 자주 많은 실수를 합니다.
           </div>
           <div className={styles.charCount}>
             {input.length} / {currentMaxLength}
