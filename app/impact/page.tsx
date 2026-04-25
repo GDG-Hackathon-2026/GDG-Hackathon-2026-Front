@@ -28,9 +28,10 @@ export default function ImpactPage() {
       console.error("데이터 로드 실패:", e);
     }
   };
-
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, user]);
 
   const handleReset = async () => {

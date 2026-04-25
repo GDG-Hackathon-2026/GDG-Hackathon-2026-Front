@@ -21,8 +21,8 @@
 }
 
 .title {
-  font-size: 2.5rem;
-  font-weight: 800;
+  font-size: 1.75rem;
+  font-weight: 700;
   margin-bottom: 12px;
   color: var(--color-text-primary);
   letter-spacing: -0.5px;
@@ -30,7 +30,7 @@
 
 .description {
   color: var(--color-text-secondary);
-  font-size: 1.1rem;
+  font-size: 1.05rem;
 }
 
 /* 시각화 씬 */
