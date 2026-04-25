@@ -50,9 +50,15 @@ export default function ChatInput({
     }
   }, []);
 
-  const currentMaxLength = localCarbon
+  // 1. 먼저 계산을 시도합니다.
+  const calculatedMax = localCarbon
     ? Math.max(0, Math.floor(BASE_MAX_LENGTH * (1 - localCarbon.totalCarbonG)))
     : BASE_MAX_LENGTH;
+
+  // 2. 만약 결과가 NaN이면 기본값(500)을 쓰고, 아니면 계산된 값을 씁니다.
+  const currentMaxLength = isNaN(calculatedMax)
+    ? BASE_MAX_LENGTH
+    : calculatedMax;
 
   const meltRatio = localCarbon
     ? Math.min(1, Math.max(0, localCarbon.totalCarbonG))
@@ -99,8 +105,8 @@ export default function ChatInput({
   };
 
   // 🔥 forcedText를 인자로 받을 수 있도록 변경 (버튼 클릭 이벤트 대비 any 타입 처리)
-  const handleSend = async (forcedText?: string | any) => {
-    // 문자열이 강제로 넘어왔으면 그걸 쓰고, 아니면 input 상태 사용
+  const handleSend = async (forcedText?: unknown) => {
+    // 인자가 문자열이면 그 값을 쓰고, 아니면 현재 input 상태값을 사용합니다.
     const textToSend = typeof forcedText === "string" ? forcedText : input;
 
     if (!textToSend.trim() || isLoading || !ready || !user) return;
