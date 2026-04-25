@@ -1,18 +1,41 @@
 .container {
   display: flex;
-  flex-direction: row; /* 🔥 가로 배치로 변경 */
-  height: calc(100vh - var(--header-height));
+  flex-direction: row;
+  height: calc(100vh - var(--header-height, 64px));
   background-color: var(--color-bg-primary);
   overflow: hidden;
+  position: relative;
+}
+
+/* 🔥 사이드바 영역을 제어하기 위한 새로운 래퍼 */
+.sidebarWrapper {
+  display: block;
+  flex-shrink: 0; /* 화면이 줄어들 때 사이드바가 찌그러지지 않도록 방지 */
+  height: 100%;
+  z-index: 10;
 }
 
 .main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  /* max-width: 800px; 대신 중앙 정렬을 위해 아래처럼 바꿀 수 있어 */
   margin: 0 auto;
   position: relative;
   overflow: hidden;
-  max-width: 900px; /* 채팅 영역 최대 너비 */
+  width: 100%;
+  max-width: 900px;
+}
+
+/* 📱 768px 이하 모바일/태블릿 반응형 처리 */
+@media (max-width: 768px) {
+  .sidebarWrapper {
+    /* 모바일에서는 사이드바를 숨겨서 채팅 공간 확보 */
+    display: none;
+  }
+
+  .main {
+    /* 모바일에서는 여백 없이 화면 100% 꽉 채우기 */
+    max-width: 100%;
+    margin: 0;
+  }
 }

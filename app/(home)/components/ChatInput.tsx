@@ -34,8 +34,9 @@ export default function ChatInput({
   const { ready, user } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 🔥 로컬에서 관리할 탄소 상태 추가
+  // 🔥 로컬에서 관리할 탄소 상태에 totalCarbonG 추가
   const [localCarbon, setLocalCarbon] = useState<{
+    totalCarbonG: number;
     meltingPercent: number;
   } | null>(null);
 
@@ -52,11 +53,11 @@ export default function ChatInput({
     }
   }, []);
 
-  // 2. 동적 글자수 계산 (0% = 500자, 100% = 0자)
+  // 2. 동적 글자수 계산 (totalCarbonG 기준: 0g = 500자, 1g = 0자)
   const currentMaxLength = localCarbon
     ? Math.max(
         0,
-        Math.floor(BASE_MAX_LENGTH * (1 - localCarbon.meltingPercent / 100)),
+        Math.floor(BASE_MAX_LENGTH * (1 - localCarbon.totalCarbonG)), // 1g 기준이므로 totalCarbonG / 1 과 동일
       )
     : BASE_MAX_LENGTH;
 
@@ -122,7 +123,7 @@ export default function ChatInput({
       console.error("전송 에러:", error);
       if (error instanceof Error && error.message.includes("402")) {
         alert(
-          "🚨 탄소 배출량이 한계치에 도달하여 북극곰의 터전이 모두 녹았습니다. 더 이상 메시지를 보낼 수 없습니다.",
+          "🚨 탄소 배출량이 1g 한계치에 도달하여 북극곰의 터전이 모두 녹았습니다. 더 이상 메시지를 보낼 수 없습니다.",
         );
       } else {
         alert("메시지 전송에 실패했습니다.");
@@ -152,7 +153,7 @@ export default function ChatInput({
             // 🔥 4. 동적 글자수 제한 적용 및 0자일 때 입력창 비활성화
             placeholder={
               currentMaxLength <= 0
-                ? "빙하가 모두 녹아 더 이상 입력할 수 없습니다..."
+                ? "탄소 배출량 1g 도달. 빙하가 모두 녹아 더 이상 입력할 수 없습니다..."
                 : "메시지를 입력하세요..."
             }
             disabled={isLoading || currentMaxLength <= 0}

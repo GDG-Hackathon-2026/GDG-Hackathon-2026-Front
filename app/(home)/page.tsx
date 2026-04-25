@@ -21,7 +21,6 @@ export default function HomePage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [sidebarKey, setSidebarKey] = useState(0);
 
-  // 🔥 탄소 및 UI 상태 관리
   const [carbonState, setCarbonState] = useState({
     totalCarbonG: 0,
     stage: 0,
@@ -29,7 +28,6 @@ export default function HomePage() {
     maxInputTokens: 8192,
   });
 
-  // 초기 접속 시 내 탄소 상태 가져오기
   useEffect(() => {
     if (ready && user) {
       api.me().then((me) => {
@@ -49,7 +47,6 @@ export default function HomePage() {
   };
 
   return (
-    // 🧊 style 속성에 CSS 변수를 주입하여 녹아내림 효과 연동 준비
     <div
       className={styles.container}
       style={
@@ -59,11 +56,15 @@ export default function HomePage() {
         } as React.CSSProperties
       }
     >
-      <Sidebar
-        key={sidebarKey}
-        selectedId={selectedId}
-        onSelect={setSelectedId}
-      />
+      {/* 🔥 Sidebar를 sidebarWrapper로 감싸서 반응형 적용 */}
+      <div className={styles.sidebarWrapper}>
+        <Sidebar
+          key={sidebarKey}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+        />
+      </div>
+
       <main className={styles.main}>
         <ChatWindow
           selectedId={selectedId}
